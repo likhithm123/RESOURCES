@@ -1,0 +1,313 @@
+// Resources portal API (Hono). Runs as one Vercel function and locally with @hono/node-server.
+import crypto from "node:crypto";
+import { Hono } from "hono";
+import { getCookie, setCookie, deleteCookie } from "hono/cookie";
+import { db } from "./db.js";
+import {
+  HttpError, fail, randomToken, sha256, hmacHex, safeEqual, secret, hashPassword, verifyPassword, checkPassword,
+  cleanEmail, str, safeUrl, jsonArr, parse, adminEmails, clientIp, rateLimit, audit, issueOtp, consumeOtp,
+  ikConfigured, ikFolder, ikUploadAuth, ikPage, ikDeleteFolder, sendMail,
+} from "./lib.js";
+
+const COOKIE = "rp_session";
+const SESSION_DAYS = 7;
+const prod = () => process.env.NODE_ENV === "production" || !!process.env.VERCEL;
+export const app = new Hono().basePath("/api");
+
+app.onError((err, c) => {
+  if (err instanceof HttpError) return c.json({ error: err.message }, err.status);
+  console.error(err);
+  return c.json({ error: "Something went wrong. Please try again." }, 500);
+});
+
+// Security headers + CSRF guard (state-changing requests must be same-origin JSON with a custom header).
+app.use("*", async (c, next) => {
+  if (!["GET", "HEAD", "OPTIONS"].includes(c.req.method)) {
+    if (c.req.header("x-requested-with") !== "portal") fail(403, "Bad request origin.");
+    const origin = c.req.header("origin");
+    if (prod() && origin && new URL(origin).host !== (c.req.header("x-forwarded-host") || c.req.header("host"))) fail(403, "Bad request origin.");
+  }
+  await next();
+  c.header("Cache-Control", "no-store");
+  c.header("X-Content-Type-Options", "nosniff");
+  c.header("X-Frame-Options", "DENY");
+  c.header("Referrer-Policy", "no-referrer");
+});
+
+// Session loader.
+app.use("*", async (c, next) => {
+  const token = getCookie(c, COOKIE);
+  let user = null;
+  if (token) {
+    user = await db.first(
+      `SELECT u.id, u.name, u.email, u.role, u.status, u.career_roles, u.plan FROM rp_sessions s JOIN rp_users u ON u.id = s.user_id
+       WHERE s.token_hash = ? AND s.expires_at > ?`, [sha256(token), Math.floor(Date.now() / 1000)]);
+    if (user && user.status !== "active") user = null;
+  }
+  c.set("user", user);
+  await next();
+});
+const auth = c => c.get("user") || fail(401, "Please sign in.");
+const admin = c => { const u = auth(c); if (u.role !== "admin") fail(403, "Admins only."); return u; };
+const body = async c => (await c.req.json().catch(() => ({}))) || {};
+const pub = u => ({ id: u.id, name: u.name, email: u.email, role: u.role, career_roles: parse(u.career_roles, []), plan: parse(u.plan, []) });
+
+async function startSession(c, userId) {
+  const token = randomToken();
+  const exp = Math.floor(Date.now() / 1000) + SESSION_DAYS * 86400;
+  await db.run("INSERT INTO rp_sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)", [sha256(token), userId, exp]);
+  await db.run("UPDATE rp_users SET last_login_at = datetime('now') WHERE id = ?", [userId]);
+  await db.run("DELETE FROM rp_sessions WHERE expires_at < ?", [Math.floor(Date.now() / 1000)]);
+  setCookie(c, COOKIE, token, { httpOnly: true, secure: prod(), sameSite: "Strict", path: "/", maxAge: SESSION_DAYS * 86400 });
+}
+
+/* ---------------- Auth ---------------- */
+// Step 1 of sign-up: create (or refresh) an unverified account and email a code.
+app.post("/auth/signup", async c => {
+  const b = await body(c);
+  const email = cleanEmail(b.email), name = str(b.name, 80), password = checkPassword(b.password);
+  if (name.length < 2) fail(400, "Enter your name.");
+  await rateLimit(`signup:${clientIp(c)}`, 10, 3600);
+  const existing = await db.first("SELECT id, status FROM rp_users WHERE email = ?", [email]);
+  if (existing && existing.status !== "unverified") fail(409, "An account with this email already exists. Please sign in.");
+  const roles = jsonArr(b.career_roles, 12);
+  if (existing) await db.run("UPDATE rp_users SET name = ?, pass_hash = ?, career_roles = ? WHERE id = ?", [name, hashPassword(password), roles, existing.id]);
+  else await db.run("INSERT INTO rp_users (name, email, pass_hash, career_roles) VALUES (?, ?, ?, ?)", [name, email, hashPassword(password), roles]);
+  await issueOtp(email, "verify");
+  return c.json({ ok: true, otp: true });
+});
+// Step 2: prove the email with the code. The account becomes active (no admin approval needed).
+app.post("/auth/verify", async c => {
+  const b = await body(c); const email = cleanEmail(b.email);
+  await rateLimit(`verify:${email}`, 10, 900);
+  const u = await db.first("SELECT * FROM rp_users WHERE email = ?", [email]);
+  if (!u) fail(400, "Sign up first.");
+  await consumeOtp(email, "verify", b.code);
+  const role = adminEmails().includes(email) ? "admin" : u.role;
+  await db.run("UPDATE rp_users SET status = 'active', role = ? WHERE id = ?", [role, u.id]);
+  await startSession(c, u.id);
+  return c.json({ ok: true, user: pub({ ...u, role }) });
+});
+// Sign-in step 1: password. Step 2: emailed code.
+app.post("/auth/login", async c => {
+  const b = await body(c); const email = cleanEmail(b.email);
+  await rateLimit(`login:${email}`, 8, 900); await rateLimit(`login-ip:${clientIp(c)}`, 40, 900);
+  const u = await db.first("SELECT * FROM rp_users WHERE email = ?", [email]);
+  if (!u || !verifyPassword(String(b.password || ""), u.pass_hash)) fail(401, "Email or password is incorrect.");
+  if (u.status === "blocked") fail(403, "This account has been blocked. Contact the admin.");
+  if (u.status === "unverified") { await issueOtp(email, "verify"); return c.json({ ok: true, otp: true, purpose: "verify" }); }
+  await issueOtp(email, "login");
+  return c.json({ ok: true, otp: true, purpose: "login" });
+});
+app.post("/auth/login/verify", async c => {
+  const b = await body(c); const email = cleanEmail(b.email);
+  await rateLimit(`loginv:${email}`, 10, 900);
+  const u = await db.first("SELECT * FROM rp_users WHERE email = ? AND status = 'active'", [email]);
+  if (!u) fail(400, "Sign in again.");
+  await consumeOtp(email, "login", b.code);
+  if (adminEmails().includes(email) && u.role !== "admin") { await db.run("UPDATE rp_users SET role = 'admin' WHERE id = ?", [u.id]); u.role = "admin"; }
+  await startSession(c, u.id);
+  return c.json({ ok: true, user: pub(u) });
+});
+app.post("/auth/logout", async c => {
+  const token = getCookie(c, COOKIE);
+  if (token) await db.run("DELETE FROM rp_sessions WHERE token_hash = ?", [sha256(token)]);
+  deleteCookie(c, COOKIE, { path: "/" });
+  return c.json({ ok: true });
+});
+app.post("/auth/forgot", async c => {
+  const email = cleanEmail((await body(c)).email);
+  await rateLimit(`forgot-ip:${clientIp(c)}`, 10, 3600);
+  const u = await db.first("SELECT id FROM rp_users WHERE email = ? AND status != 'blocked'", [email]);
+  if (u) await issueOtp(email, "reset");
+  return c.json({ ok: true });                       // same answer whether or not the account exists
+});
+app.post("/auth/reset", async c => {
+  const b = await body(c); const email = cleanEmail(b.email), password = checkPassword(b.password);
+  await rateLimit(`reset:${email}`, 10, 900);
+  const u = await db.first("SELECT id FROM rp_users WHERE email = ?", [email]);
+  if (!u) fail(400, "The code has expired. Request a new one.");
+  await consumeOtp(email, "reset", b.code);
+  await db.run("UPDATE rp_users SET pass_hash = ?, status = CASE WHEN status = 'unverified' THEN 'active' ELSE status END WHERE id = ?", [hashPassword(password), u.id]);
+  await db.run("DELETE FROM rp_sessions WHERE user_id = ?", [u.id]);
+  return c.json({ ok: true });
+});
+
+app.get("/me", c => c.json({ user: c.get("user") ? pub(c.get("user")) : null }));
+app.put("/me", async c => {
+  const u = auth(c), b = await body(c);
+  const name = str(b.name ?? u.name, 80); if (name.length < 2) fail(400, "Enter your name.");
+  await db.run("UPDATE rp_users SET name = ?, career_roles = ?, plan = ? WHERE id = ?",
+    [name, jsonArr(b.career_roles ?? parse(u.career_roles, []), 12), jsonArr(b.plan ?? parse(u.plan, []), 80), u.id]);
+  return c.json({ ok: true });
+});
+
+/* ---------------- Progress (track sheet) ---------------- */
+app.get("/progress", async c => {
+  const u = auth(c);
+  return c.json({ done: (await db.all("SELECT item_id FROM rp_progress WHERE user_id = ?", [u.id])).map(r => r.item_id) });
+});
+app.post("/progress", async c => {
+  const u = auth(c), b = await body(c);
+  const items = (Array.isArray(b.items) ? b.items : [b.item_id]).map(x => str(x, 220)).filter(Boolean).slice(0, 400);
+  for (const id of items) {
+    if (b.done) await db.run("INSERT OR IGNORE INTO rp_progress (user_id, item_id) VALUES (?, ?)", [u.id, id]);
+    else await db.run("DELETE FROM rp_progress WHERE user_id = ? AND item_id = ?", [u.id, id]);
+  }
+  return c.json({ ok: true });
+});
+
+/* ---------------- Documents and the protected viewer ---------------- */
+const docView = d => ({ id: d.id, slug: d.slug, title: d.title, description: d.description, career_roles: parse(d.career_roles, []), pages: d.pages, sort_order: d.sort_order, published: !!d.published, updated_at: d.updated_at });
+app.get("/docs", async c => {
+  auth(c);
+  return c.json({ docs: (await db.all("SELECT * FROM rp_documents WHERE published = 1 ORDER BY sort_order, slug")).map(docView) });
+});
+const signView = payload => { const p = Buffer.from(JSON.stringify(payload)).toString("base64url"); return `${p}.${hmacHex("sha256", secret(), "view:" + p)}`; };
+const viewKey = token => crypto.createHmac("sha256", secret()).update("key:" + token).digest();   // 32 bytes
+// Opens a document: returns a 30-minute view token bound to this user plus the key that decrypts its pages.
+app.post("/docs/:slug/open", async c => {
+  const u = auth(c);
+  const d = await db.first("SELECT * FROM rp_documents WHERE slug = ? AND (published = 1 OR ? = 'admin')", [c.req.param("slug"), u.role]);
+  if (!d) fail(404, "Document not found.");
+  const token = signView({ u: u.id, d: d.id, x: Math.floor(Date.now() / 1000) + 1800 });
+  await audit(c, "doc.open", d.slug);
+  return c.json({ token, key: viewKey(token).toString("base64"), pages: d.pages, title: d.title, slug: d.slug });
+});
+// One page, as AES-256-GCM ciphertext (iv | ciphertext | tag). The original PDF is never stored or served.
+app.get("/view/:token/:page", async c => {
+  const u = auth(c);
+  const token = c.req.param("token"); const [p, sig] = token.split(".");
+  if (!p || !sig || !safeEqual(sig, hmacHex("sha256", secret(), "view:" + p))) fail(403, "Invalid view.");
+  const v = parse(Buffer.from(p, "base64url").toString(), {});
+  if (v.u !== u.id || v.x < Math.floor(Date.now() / 1000)) fail(403, "This view has expired. Reopen the document.");
+  if (c.req.header("sec-fetch-dest") && c.req.header("sec-fetch-dest") !== "empty") fail(403, "Not allowed.");
+  await rateLimit(`pages:${u.id}`, 400, 600);
+  const d = await db.first("SELECT ik_folder, pages FROM rp_documents WHERE id = ?", [v.d]);
+  const page = Number(c.req.param("page"));
+  if (!d || !Number.isInteger(page) || page < 1 || page > d.pages) fail(404, "Page not found.");
+  const img = await ikPage(d.ik_folder, page, `${u.email}  ${new Date().toISOString().slice(0, 10)}`);
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv("aes-256-gcm", viewKey(token), iv);
+  const out = Buffer.concat([iv, cipher.update(img), cipher.final(), cipher.getAuthTag()]);
+  return new Response(out, { headers: { "Content-Type": "application/octet-stream", "Cache-Control": "no-store, private", "Content-Disposition": "inline", "X-Content-Type-Options": "nosniff" } });
+});
+
+/* ---------------- Resources / projects (links) ---------------- */
+const linkView = l => ({ ...l, career_roles: parse(l.career_roles, []), published: !!l.published });
+app.get("/links", async c => {
+  auth(c);
+  return c.json({ links: (await db.all("SELECT * FROM rp_links WHERE published = 1 ORDER BY kind, sort_order, id")).map(linkView) });
+});
+
+/* ---------------- Connect (interview questions shared by members, shown after admin review) ---------------- */
+const postView = (r, full) => ({
+  id: r.id, kind: r.kind, title: r.title, body: r.body, company: r.company, career_role: r.career_role, year: r.year, difficulty: r.difficulty,
+  links: parse(r.links, []), author: r.anonymous ? "Anonymous" : (r.user_name || "Member"), created_at: r.created_at, status: r.status,
+  ...(full ? { admin_note: r.admin_note, user_email: r.user_email } : {}),
+});
+const POSTS = "SELECT p.*, u.name AS user_name, u.email AS user_email FROM rp_connect_posts p LEFT JOIN rp_users u ON u.id = p.user_id";
+app.get("/connect", async c => { auth(c); return c.json({ posts: (await db.all(`${POSTS} WHERE p.status = 'approved' ORDER BY p.id DESC LIMIT 300`)).map(r => postView(r)) }); });
+app.get("/connect/mine", async c => { const u = auth(c); return c.json({ posts: (await db.all(`${POSTS} WHERE p.user_id = ? ORDER BY p.id DESC`, [u.id])).map(r => postView(r)) }); });
+function cleanPost(b) {
+  const title = str(b.title, 300); if (title.length < 8) fail(400, "Write the question or topic (at least 8 characters).");
+  const year = b.year ? Math.round(Number(b.year)) : null;
+  if (year !== null && !(year >= 2000 && year <= new Date().getFullYear() + 1)) fail(400, "Enter a valid year.");
+  return [["interview", "topic", "experience"].includes(b.kind) ? b.kind : "interview", title, str(b.body, 8000), str(b.company, 80), str(b.career_role, 60), year,
+    ["easy", "medium", "hard"].includes(b.difficulty) ? b.difficulty : "", JSON.stringify((Array.isArray(b.links) ? b.links : []).map(safeUrl).filter(Boolean).slice(0, 6)), b.anonymous ? 1 : 0];
+}
+app.post("/connect", async c => {
+  const u = auth(c); await rateLimit(`connect:${u.id}`, 5, 7 * 86400);
+  const status = u.role === "admin" ? "approved" : "pending";
+  await db.run("INSERT INTO rp_connect_posts (kind, title, body, company, career_role, year, difficulty, links, anonymous, user_id, status) VALUES (?,?,?,?,?,?,?,?,?,?,?)", [...cleanPost(await body(c)), u.id, status]);
+  return c.json({ ok: true, status });
+});
+
+/* ---------------- Admin CMS ---------------- */
+app.get("/admin/stats", async c => {
+  admin(c);
+  const one = async sql => (await db.first(sql))?.n || 0;
+  return c.json({
+    users: await one("SELECT COUNT(*) n FROM rp_users WHERE status = 'active'"), unverified: await one("SELECT COUNT(*) n FROM rp_users WHERE status = 'unverified'"),
+    docs: await one("SELECT COUNT(*) n FROM rp_documents"), links: await one("SELECT COUNT(*) n FROM rp_links"),
+    pending_posts: await one("SELECT COUNT(*) n FROM rp_connect_posts WHERE status = 'pending'"),
+    top: await db.all("SELECT u.name, u.email, COUNT(p.item_id) AS done FROM rp_users u LEFT JOIN rp_progress p ON p.user_id = u.id WHERE u.status = 'active' GROUP BY u.id ORDER BY done DESC LIMIT 20"),
+    imagekit: ikConfigured(),
+  });
+});
+app.get("/admin/users", async c => { admin(c); return c.json({ users: await db.all("SELECT id, name, email, role, status, career_roles, created_at, last_login_at FROM rp_users ORDER BY id DESC LIMIT 1000") }); });
+app.post("/admin/users/:id", async c => {
+  const me = admin(c), b = await body(c), id = Number(c.req.param("id"));
+  if (id === me.id) fail(400, "You cannot change your own account here.");
+  if (b.action === "delete") { await db.run("DELETE FROM rp_sessions WHERE user_id = ?", [id]); await db.run("DELETE FROM rp_progress WHERE user_id = ?", [id]); await db.run("DELETE FROM rp_users WHERE id = ?", [id]); }
+  else if (b.action === "block") { await db.run("UPDATE rp_users SET status = 'blocked' WHERE id = ?", [id]); await db.run("DELETE FROM rp_sessions WHERE user_id = ?", [id]); }
+  else if (b.action === "unblock") await db.run("UPDATE rp_users SET status = 'active' WHERE id = ?", [id]);
+  else if (b.action === "role" && ["student", "admin"].includes(b.role)) await db.run("UPDATE rp_users SET role = ? WHERE id = ?", [b.role, id]);
+  else fail(400, "Unknown action.");
+  await audit(c, `user.${b.action}`, String(id));
+  return c.json({ ok: true });
+});
+
+app.get("/admin/docs", async c => { admin(c); return c.json({ docs: (await db.all("SELECT * FROM rp_documents ORDER BY sort_order, slug")).map(docView) }); });
+// Each page image needs its own one-time upload signature.
+app.get("/admin/ik-auth", c => { admin(c); if (!ikConfigured()) fail(503, "ImageKit is not configured."); return c.json(ikUploadAuth()); });
+app.post("/admin/docs/prepare", async c => {
+  admin(c); const slug = str((await body(c)).slug, 80).toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-|-$/g, "");
+  if (slug.length < 3) fail(400, "Give the document a short name (slug).");
+  const old = await db.first("SELECT version FROM rp_documents WHERE slug = ?", [slug]);
+  const version = (old?.version || 0) + 1;
+  return c.json({ slug, version, folder: `${ikFolder()}/docs/${slug}-v${version}` });
+});
+app.post("/admin/docs", async c => {
+  admin(c); const b = await body(c);
+  const slug = str(b.slug, 80), title = str(b.title, 160), pages = Math.round(Number(b.pages)), folder = str(b.folder, 300), version = Math.round(Number(b.version)) || 1;
+  if (!slug || !title || !(pages > 0) || !folder.startsWith(ikFolder() + "/docs/")) fail(400, "Missing document details.");
+  const old = await db.first("SELECT * FROM rp_documents WHERE slug = ?", [slug]);
+  if (old) {
+    await db.run("UPDATE rp_documents SET title = ?, description = ?, career_roles = ?, ik_folder = ?, pages = ?, version = ?, sort_order = ?, updated_at = datetime('now') WHERE id = ?",
+      [title, str(b.description, 500), jsonArr(b.career_roles, 12), folder, pages, version, Number(b.sort_order) || 0, old.id]);
+    if (old.ik_folder !== folder) await ikDeleteFolder(old.ik_folder);
+  } else {
+    await db.run("INSERT INTO rp_documents (slug, title, description, career_roles, ik_folder, pages, version, sort_order) VALUES (?,?,?,?,?,?,?,?)",
+      [slug, title, str(b.description, 500), jsonArr(b.career_roles, 12), folder, pages, version, Number(b.sort_order) || 0]);
+  }
+  await audit(c, "doc.save", slug);
+  return c.json({ ok: true });
+});
+app.put("/admin/docs/:id", async c => {
+  admin(c); const b = await body(c), id = Number(c.req.param("id"));
+  const d = await db.first("SELECT * FROM rp_documents WHERE id = ?", [id]); if (!d) fail(404, "Not found.");
+  await db.run("UPDATE rp_documents SET title = ?, description = ?, career_roles = ?, sort_order = ?, published = ?, updated_at = datetime('now') WHERE id = ?",
+    [str(b.title ?? d.title, 160), str(b.description ?? d.description, 500), jsonArr(b.career_roles ?? parse(d.career_roles, []), 12), Number(b.sort_order ?? d.sort_order) || 0, (b.published ?? d.published) ? 1 : 0, id]);
+  return c.json({ ok: true });
+});
+app.delete("/admin/docs/:id", async c => {
+  admin(c); const d = await db.first("SELECT * FROM rp_documents WHERE id = ?", [Number(c.req.param("id"))]); if (!d) fail(404, "Not found.");
+  await db.run("DELETE FROM rp_documents WHERE id = ?", [d.id]); await ikDeleteFolder(d.ik_folder); await audit(c, "doc.delete", d.slug);
+  return c.json({ ok: true });
+});
+
+app.get("/admin/links", async c => { admin(c); return c.json({ links: (await db.all("SELECT * FROM rp_links ORDER BY kind, sort_order, id")).map(linkView) }); });
+const cleanLink = b => {
+  const title = str(b.title, 160); if (title.length < 2) fail(400, "Enter a title.");
+  const url = b.url ? safeUrl(b.url) : ""; if (b.url && !url) fail(400, "Enter a valid http(s) link.");
+  return [b.kind === "project" ? "project" : "resource", title, str(b.description, 2000), url, str(b.category, 60), jsonArr(b.career_roles, 12), Number(b.sort_order) || 0, b.published === false ? 0 : 1];
+};
+app.post("/admin/links", async c => { admin(c); await db.run("INSERT INTO rp_links (kind, title, description, url, category, career_roles, sort_order, published) VALUES (?,?,?,?,?,?,?,?)", cleanLink(await body(c))); return c.json({ ok: true }); });
+app.put("/admin/links/:id", async c => { admin(c); await db.run("UPDATE rp_links SET kind = ?, title = ?, description = ?, url = ?, category = ?, career_roles = ?, sort_order = ?, published = ? WHERE id = ?", [...cleanLink(await body(c)), Number(c.req.param("id"))]); return c.json({ ok: true }); });
+app.delete("/admin/links/:id", async c => { admin(c); await db.run("DELETE FROM rp_links WHERE id = ?", [Number(c.req.param("id"))]); return c.json({ ok: true }); });
+
+app.get("/admin/connect", async c => { admin(c); return c.json({ posts: (await db.all(`${POSTS} ORDER BY CASE p.status WHEN 'pending' THEN 0 ELSE 1 END, p.id DESC LIMIT 500`)).map(r => postView(r, true)) }); });
+app.post("/admin/connect/:id", async c => {
+  admin(c); const b = await body(c), id = Number(c.req.param("id"));
+  if (b.action === "delete") await db.run("DELETE FROM rp_connect_posts WHERE id = ?", [id]);
+  else if (["approved", "rejected", "pending"].includes(b.status)) {
+    await db.run("UPDATE rp_connect_posts SET status = ?, admin_note = ?, reviewed_at = datetime('now') WHERE id = ?", [b.status, str(b.note, 300), id]);
+    const p = await db.first(`${POSTS} WHERE p.id = ?`, [id]);
+    if (p?.user_email && b.status !== "pending") await sendMail(p.user_email, `Your Connect post was ${b.status}`, `Your post was ${b.status}`, `<p>"${p.title.replace(/[<>&]/g, "")}"</p>`, `Your Connect post "${p.title}" was ${b.status}.`);
+  } else fail(400, "Unknown action.");
+  return c.json({ ok: true });
+});
+app.get("/admin/audit", async c => { admin(c); return c.json({ rows: await db.all("SELECT a.*, u.email FROM rp_audit a LEFT JOIN rp_users u ON u.id = a.user_id ORDER BY a.id DESC LIMIT 300") }); });
+
+app.all("*", c => c.json({ error: "Not found." }, 404));

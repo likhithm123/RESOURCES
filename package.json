@@ -1,0 +1,33 @@
+{
+  "name": "dsa-prep-portal",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "topics": "node scripts/gen-topics.mjs",
+    "api": "node server/dev.js",
+    "web": "vite",
+    "dev": "node scripts/gen-topics.mjs && (node server/dev.js & vite)",
+    "build": "node scripts/gen-topics.mjs && vite build",
+    "db:migrate": "node server/dev.js --migrate",
+    "pdfs:upload": "node scripts/upload-pdfs.mjs"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.1.8",
+    "hono": "^4.13.18",
+    "nodemailer": "^10.5.0",
+    "pdfjs-dist": "^6.5.438",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-router-dom": "^7.18.5"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

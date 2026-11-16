@@ -1,0 +1,17 @@
+{
+  "name": "upsc-portal",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.21.0",
+  "scripts": {
+    "gen": "node scripts/gen-topics.mjs",
+    "dev": "pnpm gen && wrangler dev",
+    "deploy": "pnpm gen && wrangler deploy",
+    "db:init": "wrangler d1 execute resources --remote --file=schema.sql",
+    "upload:pdfs": "node scripts/upload-pdfs.mjs"
+  },
+  "devDependencies": {
+    "wrangler": "^4"
+  }
+}

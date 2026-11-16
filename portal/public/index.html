@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UPSC Zero to IAS - Progress Tracker</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header class="top"><div class="bar">
+  <div class="logo">UPSC - Zero to IAS<small>Handwritten notes + synchronized progress tracker</small></div>
+  <nav class="tabs" id="tabs">
+    <button data-tab="track" class="on">Tracker</button>
+    <button data-tab="library">Library</button>
+    <button data-tab="check">Final checklist</button>
+    <button data-tab="account">Sync</button>
+  </nav>
+  <div class="sync"><span class="dot" id="dot"></span><span id="syncText">Saved on this device</span></div>
+</div></header>
+<main>
+  <div id="notice" class="notice" hidden></div>
+  <section id="track">
+    <div class="grid stats" id="stats"></div>
+    <div class="legend"><span><i style="background:var(--r1)"></i>Read</span><span><i style="background:var(--r2)"></i>Practised (MCQs + answers)</span><span><i style="background:var(--r3)"></i>Revised</span><span>A topic is complete only when all three are ticked.</span></div>
+    <input class="search" id="q" placeholder="Search topics, e.g. monsoon, fundamental rights, mutual funds" aria-label="Search topics">
+    <div id="books"></div>
+  </section>
+  <section id="library" hidden>
+    <h2>Notebooks and resources</h2>
+    <div class="card" id="resList">Loading...</div>
+  </section>
+  <section id="check" hidden>
+    <h2>Before you appear for UPSC, you should be able to...</h2>
+    <div class="card"><ul class="check35" id="check35"></ul></div>
+  </section>
+  <section id="account" hidden>
+    <h2>Sync across devices</h2>
+    <div class="card">
+      <div id="signedOut">
+        <p class="intro">Your ticks are always saved on this device. Sign in to keep them in the cloud and continue on your phone or another laptop.</p>
+        <form class="stack" id="authForm">
+          <label>Username<input name="username" autocomplete="username" required minlength="3" maxlength="30"></label>
+          <label>Password<input name="password" type="password" autocomplete="current-password" required minlength="6"></label>
+          <label class="row"><input type="checkbox" name="create"> Create new account</label>
+          <button class="btn primary">Sign in and sync</button>
+          <div class="msg" id="authMsg"></div>
+        </form>
+      </div>
+      <div id="signedIn" hidden>
+        <p>Signed in as <b id="who"></b>. Progress syncs automatically.</p>
+        <div class="tools"><button class="btn" id="syncNow">Sync now</button><button class="btn" id="logout">Sign out</button></div>
+      </div>
+      <h2>Backup</h2>
+      <div class="tools"><button class="btn" id="export">Export progress (JSON)</button><button class="btn" id="import">Import</button><button class="btn danger" id="reset">Reset all progress</button></div>
+      <p class="intro"><a href="/admin.html">Admin CMS</a></p>
+    </div>
+  </section>
+</main>
+<script src="/app.js" type="module"></script>
+</body>
+</html>

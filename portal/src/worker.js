@@ -5,6 +5,18 @@ const enc = new TextEncoder();
 const hex = buf => [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
 const rand = n => hex(crypto.getRandomValues(new Uint8Array(n)));
 const now = () => Date.now();
+const IDLE_MS = 20 * 60 * 1000; // server-side idle limit (the page signs out after 15 min of no activity)
+const IK_HOST = 'https://ik.imagekit.io/';
+
+// ImageKit private files are only reachable through a signed, short-lived URL.
+async function signedIk(env, fileUrl) {
+  const base = env.IMAGEKIT_URL.replace(/\/$/, '') + '/', clean = fileUrl.split('?')[0];
+  const exp = Math.floor(now() / 1000) + 120;
+  const key = await crypto.subtle.importKey('raw', enc.encode(env.IMAGEKIT_PRIVATE_KEY), { name: 'HMAC', hash: 'SHA-1' }, false, ['sign']);
+  const sig = hex(await crypto.subtle.sign('HMAC', key, enc.encode(clean.replace(base, '') + exp)));
+  return `${clean}?ik-t=${exp}&ik-s=${sig}`;
+}
+const isHosted = r => r.file_id && r.url.startsWith(IK_HOST);
 
 async function pbkdf2(pass, salt) {
   const key = await crypto.subtle.importKey('raw', enc.encode(pass), 'PBKDF2', false, ['deriveBits']);
@@ -19,8 +31,11 @@ const bearer = req => (req.headers.get('authorization') || '').replace(/^Bearer\
 
 async function userOf(req, env) {
   const t = bearer(req); if (!t) return null;
-  const row = await env.DB.prepare('SELECT u.id, u.username FROM upsc_sessions s JOIN upsc_users u ON u.id = s.user_id WHERE s.token = ?').bind(t).first();
-  return row || null;
+  const row = await env.DB.prepare('SELECT u.id, u.username, s.last_seen FROM upsc_sessions s JOIN upsc_users u ON u.id = s.user_id WHERE s.token = ?').bind(t).first();
+  if (!row) return null;
+  if (now() - row.last_seen > IDLE_MS) { await env.DB.prepare('DELETE FROM upsc_sessions WHERE token = ?').bind(t).run(); return null; } // idle sessions die on the server too
+  if (now() - row.last_seen > 60000) await env.DB.prepare('UPDATE upsc_sessions SET last_seen = ? WHERE token = ?').bind(now(), t).run();
+  return row;
 }
 async function adminToken(env, exp) { return exp + '.' + await hmac(env.ADMIN_PASSWORD, 'admin:' + exp); }
 async function isAdmin(req, env) {
@@ -43,13 +58,15 @@ async function api(req, env, url) {
     if (password.length < 6) return err('Password must be at least 6 characters');
     let u = await env.DB.prepare('SELECT * FROM upsc_users WHERE username = ?').bind(username).first();
     if (!u) {
+      const closed = await env.DB.prepare("SELECT value FROM upsc_settings WHERE key = 'signup'").first();
+      if (b.create && closed && closed.value === 'closed') return err('New registrations are closed. Ask the admin for an account.', 403);
       if (!b.create) return err('No such account. Tick "create new account" to register.', 404);
       const salt = rand(16);
       await env.DB.prepare('INSERT INTO upsc_users (username, salt, pass_hash, created_at) VALUES (?,?,?,?)').bind(username, salt, await pbkdf2(password, salt), now()).run();
       u = await env.DB.prepare('SELECT * FROM upsc_users WHERE username = ?').bind(username).first();
     } else if (!safeEq(await pbkdf2(password, u.salt), u.pass_hash)) return err('Wrong password', 401);
     const token = rand(32);
-    await env.DB.prepare('INSERT INTO upsc_sessions (token, user_id, created_at) VALUES (?,?,?)').bind(token, u.id, now()).run();
+    await env.DB.prepare('INSERT INTO upsc_sessions (token, user_id, created_at, last_seen) VALUES (?,?,?,?)').bind(token, u.id, now(), now()).run();
     return json({ token, username });
   }
   if (p === '/logout' && m === 'POST') { await env.DB.prepare('DELETE FROM upsc_sessions WHERE token = ?').bind(bearer(req)).run(); return json({ ok: true }); }
@@ -66,11 +83,28 @@ async function api(req, env, url) {
     return json({ username: u.username, items: results });
   }
 
-  // ---------- public library ----------
+  // ---------- library (signed-in users only; hosted files never expose their storage URL) ----------
   if (p === '/resources' && m === 'GET') {
-    const { results } = await env.DB.prepare('SELECT id, slug, title, category, kind, url, description, sort, created_at FROM upsc_resources ORDER BY sort, id').all();
-    const notice = await env.DB.prepare("SELECT value FROM upsc_settings WHERE key = 'notice'").first();
-    return json({ resources: results, notice: notice ? notice.value : '' });
+    const admin = await isAdmin(req, env);
+    if (!admin && !(await userOf(req, env))) return err('Sign in to continue', 401);
+    const { results } = await env.DB.prepare('SELECT id, slug, title, category, kind, url, file_id, description, sort, created_at FROM upsc_resources ORDER BY sort, id').all();
+    const { results: set } = await env.DB.prepare('SELECT key, value FROM upsc_settings').all();
+    const cfg = Object.fromEntries(set.map(r => [r.key, r.value]));
+    return json({ resources: results.map(r => { const hosted = isHosted(r); const { file_id, ...o } = r; return { ...o, protected: !!hosted, url: hosted && !admin ? null : r.url }; }), notice: cfg.notice || '', signup: cfg.signup || 'open' });
+  }
+  // Streams a protected file to a signed-in user. The bytes are XOR-scrambled with a per-session key, so a copy
+  // saved from the Network tab is not a readable PDF; the viewer unscrambles it in memory and paints it on canvas.
+  const fm = p.match(/^\/file\/(\d+)$/);
+  if (fm && m === 'GET') {
+    const u = await userOf(req, env); if (!u) return err('Sign in to continue', 401);
+    const r = await env.DB.prepare('SELECT * FROM upsc_resources WHERE id = ?').bind(fm[1]).first();
+    if (!r || !isHosted(r)) return err('Not found', 404);
+    const up = await fetch(await signedIk(env, r.url));
+    if (!up.ok) return err('File store error ' + up.status, 502);
+    const data = new Uint8Array(await up.arrayBuffer());
+    const key = new Uint8Array(await crypto.subtle.digest('SHA-256', enc.encode(bearer(req) + ':' + r.id)));
+    for (let i = 0; i < data.length; i++) data[i] ^= key[i & 31];
+    return new Response(data, { headers: { 'content-type': 'application/octet-stream', 'cache-control': 'no-store, private', 'x-content-type-options': 'nosniff', 'x-title': encodeURIComponent(r.title) } });
   }
 
   // ---------- admin CMS ----------
@@ -87,6 +121,8 @@ async function api(req, env, url) {
       return json({ users: users.n, learners: results });
     }
     if (p === '/admin/notice' && m === 'POST') {
+      const nb = await req.clone().json().catch(() => ({}));
+      if (nb.signup) await env.DB.prepare("INSERT INTO upsc_settings (key, value) VALUES ('signup', ?1) ON CONFLICT(key) DO UPDATE SET value = ?1").bind(nb.signup === 'closed' ? 'closed' : 'open').run();
       await env.DB.prepare("INSERT INTO upsc_settings (key, value) VALUES ('notice', ?1) ON CONFLICT(key) DO UPDATE SET value = ?1").bind(String((await body()).notice || '').slice(0, 600)).run();
       return json({ ok: true });
     }
@@ -101,6 +137,7 @@ async function api(req, env, url) {
       out.append('folder', (env.IMAGEKIT_FOLDER || '/upsc') + '/' + String(form.get('folder') || 'library').replace(/[^a-z0-9/_-]/gi, ''));
       out.append('useUniqueFileName', form.get('overwrite') ? 'false' : 'true');
       if (form.get('overwrite')) out.append('overwriteFile', 'true');
+      out.append('isPrivateFile', 'true'); // never publicly reachable; served only through /api/file
       const r = await fetch('https://upload.imagekit.io/api/v1/files/upload', { method: 'POST', headers: { authorization: ikAuth(env) }, body: out });
       const d = await r.json();
       if (!r.ok) return err('ImageKit: ' + (d.message || r.status), 502);

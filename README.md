@@ -5,7 +5,7 @@ Handwritten-style notebooks for the whole UPSC Civil Services syllabus plus a sy
 | Folder | What it is |
 |---|---|
 | `notes/` | Markdown sources (`content/*.md`) and the builder that turns them into handwritten notebook PDFs |
-| `pdfs/` | The built notebooks |
+| `pdfs/` | The built notebooks (not committed - they are served only through the signed-in, view-only reader) |
 | `portal/` | Tracker website: Cloudflare Worker + D1 (progress sync, library) + ImageKit (file store) + admin CMS |
 
 ## Build the notebooks

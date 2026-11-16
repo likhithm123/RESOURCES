@@ -9,7 +9,8 @@ CREATE TABLE IF NOT EXISTS upsc_users (
 CREATE TABLE IF NOT EXISTS upsc_sessions (
   token TEXT PRIMARY KEY,
   user_id INTEGER NOT NULL,
-  created_at INTEGER NOT NULL
+  created_at INTEGER NOT NULL,
+  last_seen INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS upsc_progress (
   user_id INTEGER NOT NULL,

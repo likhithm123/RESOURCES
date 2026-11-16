@@ -72,3 +72,5 @@ table { width: 100%; border-collapse: collapse; font-size: 14px; } th, td { text
 th { color: var(--mute); font-weight: 600; font-size: 12.5px; }
 .scroll { overflow-x: auto; }
 @media (max-width: 560px) { .topic { grid-template-columns: 1fr; } .logo { width: 100%; } }
+
+body.locked #backup { display: none; }

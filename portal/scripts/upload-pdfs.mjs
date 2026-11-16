@@ -14,9 +14,9 @@ for (const f of readdirSync(dir).filter(f => f.endsWith('.pdf') && (!process.arg
   const key = f.replace(/\.pdf$/, ''), book = topics.find(b => b.key === key);
   const fd = new FormData();
   fd.append('file', new Blob([readFileSync(join(dir, f))], { type: 'application/pdf' }), f);
-  fd.append('fileName', f); fd.append('folder', '/upsc/notes'); fd.append('useUniqueFileName', 'false'); fd.append('overwriteFile', 'true');
+  fd.append('fileName', f); fd.append('folder', '/upsc/notes'); fd.append('useUniqueFileName', 'false'); fd.append('overwriteFile', 'true'); fd.append('isPrivateFile', 'true');
   const r = await fetch('https://upload.imagekit.io/api/v1/files/upload', { method: 'POST', headers: { authorization: 'Basic ' + Buffer.from(vars.IMAGEKIT_PRIVATE_KEY + ':').toString('base64') }, body: fd });
   const d = await r.json(); if (!r.ok) { console.log('FAIL', f, d.message); continue; }
-  await post('/admin/resources', { slug: key, title: book ? book.title : key, category: 'notebook', kind: 'pdf', url: d.url + '?v=' + Date.now(), file_id: d.fileId, description: book ? book.intro : '', sort: Number(key.slice(0, 2)) }, token);
+  await post('/admin/resources', { slug: key, title: book ? book.title : key, category: 'notebook', kind: 'pdf', url: d.url, file_id: d.fileId, description: book ? book.intro : '', sort: Number(key.slice(0, 2)) }, token);
   console.log('ok  ', f, '->', d.url);
 }

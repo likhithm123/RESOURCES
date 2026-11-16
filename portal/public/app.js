@@ -8,6 +8,23 @@ const BITS = [[1, 'Read'], [2, 'Practised'], [4, 'Revised']];
 const st = id => (prog[id] ? prog[id].s : 0);
 const bits = n => (n & 1) + ((n >> 1) & 1) + ((n >> 2) & 1);
 
+const IDLE_MS = 15 * 60 * 1000; // sign out after 15 minutes without activity
+const touch = () => LS.set('upsc.last', Date.now());
+function signOutLocal(why) {
+  token = null; LS.set('upsc.token', null); prog = {}; dirty = new Set(); pdfs = {};
+  ['upsc.progress', 'upsc.dirty'].forEach(k => { try { localStorage.removeItem(k); } catch {} });
+  gate(); if (why) { const m = $('#authMsg'); m.className = 'msg bad'; m.textContent = why; }
+}
+function gate() { // nothing is shown without signing in
+  const inn = !!token; document.body.classList.toggle('locked', !inn);
+  ['track', 'library', 'check'].forEach(id => $('#' + id).hidden = true);
+  $('#account').hidden = false; $('#tabs').hidden = !inn; showAccount();
+  if (inn) { $('#account').hidden = true; $('#track').hidden = false; document.querySelectorAll('#tabs button').forEach(x => x.classList.toggle('on', x.dataset.tab === 'track')); }
+  else setSync('', 'Sign in required');
+}
+['mousemove', 'keydown', 'click', 'scroll', 'touchstart'].forEach(ev => addEventListener(ev, () => { if (token && Date.now() - LS.get('upsc.last', 0) > 5000) touch(); }, { passive: true }));
+setInterval(() => { if (token && Date.now() - LS.get('upsc.last', 0) > IDLE_MS) { api('/logout', { method: 'POST' }).catch(() => {}); signOutLocal('Signed out after 15 minutes of inactivity.'); } }, 20000);
+
 function setSync(state, text) { $('#dot').className = 'dot ' + state; $('#syncText').textContent = text; }
 function save() { LS.set('upsc.progress', prog); LS.set('upsc.dirty', [...dirty]); }
 
@@ -19,7 +36,7 @@ async function api(path, opts = {}) {
 }
 
 async function sync() {
-  if (!token) return setSync('', 'Saved on this device');
+  if (!token) return;
   setSync('busy', 'Syncing...');
   try {
     const sending = [...dirty];
@@ -29,7 +46,7 @@ async function sync() {
     save(); render();
     setSync('ok', 'Synced as ' + d.username);
   } catch (e) {
-    if (e.status === 401) { token = null; LS.set('upsc.token', null); showAccount(); setSync('bad', 'Signed out - sign in again'); }
+    if (e.status === 401) signOutLocal('Session expired - sign in again.');
     else setSync('bad', 'Offline - will retry');
   }
 }
@@ -63,7 +80,7 @@ function render() {
       <summary><span class="no">${b.no}</span><span class="bt">${esc(b.title)}<small>${done}/${b.topics.length} topics complete</small></span><span class="pct">${pct}%</span>
       <span class="meter"><i class="a" style="width:${c[0] / n * 33.34}%"></i><i class="b" style="width:${c[1] / n * 33.33}%"></i><i class="c" style="width:${c[2] / n * 33.33}%"></i></span></summary>
       <div class="inner"><p class="intro">${esc(b.intro)}</p>
-      <div class="tools">${pdf ? `<a class="btn primary" href="${esc(pdf)}" target="_blank" rel="noopener">Open handwritten PDF</a>` : '<span class="intro">PDF not uploaded yet - see the pdfs folder</span>'}</div>
+      <div class="tools">${pdf ? `<a class="btn primary" href="${esc(pdf)}" target="_blank">Read the handwritten notebook</a>` : '<span class="intro">Notebook not uploaded yet.</span>'}</div>
       ${shown.map(t => { const s = st(t.id); return `<div class="topic ${s === 7 ? 'done' : ''}"><div class="t"><span>${esc(t.title)}</span>${t.subs.length ? `<small>${esc(t.subs.join(' · '))}</small>` : ''}</div>
         <div class="chk">${BITS.map(([bit, lab]) => `<button data-id="${t.id}" data-b="${bit}" class="${s & bit ? 'on' : ''}" aria-pressed="${!!(s & bit)}">${lab}</button>`).join('')}</div></div>`; }).join('')}
       </div></details>`;
@@ -85,8 +102,9 @@ async function loadLibrary() {
   try {
     const d = await api('/resources');
     if (d.notice) { $('#notice').hidden = false; $('#notice').textContent = d.notice; }
-    pdfs = {}; d.resources.forEach(r => { if (r.category === 'notebook' && r.slug) pdfs[r.slug] = r.url; });
-    $('#resList').innerHTML = d.resources.length ? d.resources.map(r => `<div class="res"><div><b>${esc(r.title)}</b><span class="tag">${esc(r.kind)}</span><span class="tag">${esc(r.category)}</span>${r.description ? `<div class="intro" style="margin:2px 0 0">${esc(r.description)}</div>` : ''}</div><a class="btn" href="${esc(r.url)}" target="_blank" rel="noopener">Open</a></div>`).join('') : '<p class="intro">Nothing uploaded yet. The admin can add PDFs and links from the Admin CMS.</p>';
+    const link = r => r.protected ? '/viewer.html?id=' + r.id : r.url;
+    pdfs = {}; d.resources.forEach(r => { if (r.category === 'notebook' && r.slug) pdfs[r.slug] = link(r); });
+    $('#resList').innerHTML = d.resources.length ? d.resources.map(r => `<div class="res"><div><b>${esc(r.title)}</b><span class="tag">${esc(r.kind)}</span><span class="tag">${esc(r.category)}</span>${r.description ? `<div class="intro" style="margin:2px 0 0">${esc(r.description)}</div>` : ''}</div><a class="btn" href="${esc(link(r))}" target="_blank" rel="noopener">${r.protected ? 'View' : 'Open'}</a></div>`).join('') : '<p class="intro">Nothing uploaded yet. The admin can add PDFs and links from the Admin CMS.</p>';
     render();
   } catch (e) { $('#resList').innerHTML = `<p class="intro">Library unavailable: ${esc(e.message)}</p>`; }
 }
@@ -96,7 +114,7 @@ function showAccount() { $('#signedIn').hidden = !token; $('#signedOut').hidden 
 document.addEventListener('click', e => {
   const b = e.target.closest('.chk button'); if (b) return toggle(b.dataset.id, Number(b.dataset.b));
   const t = e.target.closest('#tabs button');
-  if (t) { document.querySelectorAll('#tabs button').forEach(x => x.classList.toggle('on', x === t)); ['track', 'library', 'check', 'account'].forEach(id => $('#' + id).hidden = id !== t.dataset.tab); }
+  if (t && token) { document.querySelectorAll('#tabs button').forEach(x => x.classList.toggle('on', x === t)); ['track', 'library', 'check', 'account'].forEach(id => $('#' + id).hidden = id !== t.dataset.tab); }
 });
 document.addEventListener('toggle', e => { const d = e.target.closest && e.target.closest('.book'); if (!d || $('#q').value) return; d.open ? open.add(d.dataset.key) : open.delete(d.dataset.key); LS.set('upsc.open', [...open]); }, true);
 $('#check35').addEventListener('change', e => { const id = e.target.dataset.id; prog[id] = { s: e.target.checked ? 7 : 0, t: Date.now() }; dirty.add(id); save(); queueSync(); });
@@ -106,11 +124,10 @@ $('#authForm').addEventListener('submit', async e => {
   try {
     const d = await api('/auth', { method: 'POST', body: { username: f.get('username'), password: f.get('password'), create: !!f.get('create') } });
     token = d.token; user = d.username; LS.set('upsc.token', token); LS.set('upsc.user', user);
-    Object.keys(prog).forEach(id => dirty.add(id)); // push everything done offline
-    msg.textContent = ''; e.target.reset(); showAccount(); sync();
+    touch(); msg.textContent = ''; e.target.reset(); gate(); loadLibrary(); sync();
   } catch (er) { msg.className = 'msg bad'; msg.textContent = er.message; }
 });
-$('#logout').onclick = async () => { try { await api('/logout', { method: 'POST' }); } catch {} token = null; LS.set('upsc.token', null); showAccount(); setSync('', 'Saved on this device'); };
+$('#logout').onclick = async () => { try { await sync(); await api('/logout', { method: 'POST' }); } catch {} signOutLocal(''); };
 $('#syncNow').onclick = sync;
 $('#export').onclick = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(prog)], { type: 'application/json' })); a.download = 'upsc-progress.json'; a.click(); };
 $('#import').onclick = () => { const i = document.createElement('input'); i.type = 'file'; i.accept = '.json'; i.onchange = async () => { try { const d = JSON.parse(await i.files[0].text()); for (const [id, v] of Object.entries(d)) if (v && typeof v.s === 'number' && (!prog[id] || v.t > prog[id].t)) { prog[id] = { s: v.s & 7, t: v.t }; dirty.add(id); } save(); render(); renderCheck(); queueSync(); } catch { alert('Not a valid progress file'); } }; i.click(); };
@@ -119,4 +136,5 @@ window.addEventListener('focus', () => token && sync());
 setInterval(() => token && document.visibilityState === 'visible' && sync(), 60000);
 
 books = await fetch('/topics.json').then(r => r.json()).catch(() => []);
-render(); renderCheck(); showAccount(); loadLibrary(); sync();
+if (token && Date.now() - LS.get('upsc.last', 0) > IDLE_MS) signOutLocal('Signed out after 15 minutes of inactivity.');
+gate(); render(); renderCheck(); if (token) { loadLibrary(); sync(); }

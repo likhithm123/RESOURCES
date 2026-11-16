@@ -17,9 +17,9 @@ const msg = (el, text, cls = '') => { el.className = 'msg ' + cls; el.textConten
 async function load() {
   try {
     const [lib, stats] = await Promise.all([api('/resources'), api('/admin/stats')]);
-    rows = lib.resources; $('#noticeForm').notice.value = lib.notice;
+    rows = lib.resources; $('#noticeForm').notice.value = lib.notice; $('#noticeForm').signup.value = lib.signup;
     $('#stats').innerHTML = [[stats.users, 'Accounts'], [rows.length, 'Resources'], [rows.filter(r => r.category === 'notebook').length, 'Notebook PDFs']].map(([v, l]) => `<div class="card stat"><b>${v}</b><span>${l}</span></div>`).join('');
-    $('#resTable').innerHTML = '<tr><th>Title</th><th>Category</th><th>Type</th><th>Sort</th><th></th></tr>' + (rows.map(r => `<tr><td><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title)}</a>${r.slug ? `<div class="intro" style="margin:0">${esc(r.slug)}</div>` : ''}</td><td>${esc(r.category)}</td><td>${esc(r.kind)}</td><td>${r.sort}</td><td style="white-space:nowrap"><button class="btn" data-edit="${r.id}">Edit</button> <button class="btn danger" data-del="${r.id}">Delete</button></td></tr>`).join('') || '<tr><td colspan="5">No resources yet.</td></tr>');
+    $('#resTable').innerHTML = '<tr><th>Title</th><th>Category</th><th>Type</th><th>Sort</th><th></th></tr>' + (rows.map(r => `<tr><td>${r.protected ? esc(r.title) + ' <span class="tag">protected</span>' : `<a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title)}</a>`}${r.slug ? `<div class="intro" style="margin:0">${esc(r.slug)}</div>` : ''}</td><td>${esc(r.category)}</td><td>${esc(r.kind)}</td><td>${r.sort}</td><td style="white-space:nowrap"><button class="btn" data-edit="${r.id}">Edit</button> <button class="btn danger" data-del="${r.id}">Delete</button></td></tr>`).join('') || '<tr><td colspan="5">No resources yet.</td></tr>');
     $('#learners').innerHTML = '<tr><th>Username</th><th>Topics started</th><th>Last activity</th></tr>' + (stats.learners.map(l => `<tr><td>${esc(l.username)}</td><td>${l.topics}</td><td>${l.last ? new Date(l.last).toLocaleString() : '-'}</td></tr>`).join('') || '<tr><td colspan="3">No accounts yet.</td></tr>');
   } catch (e) { if (token) msg($('#resMsg'), e.message, 'bad'); }
 }
@@ -30,7 +30,7 @@ $('#loginForm').addEventListener('submit', async e => {
   catch (er) { token = ''; msg($('#loginMsg'), er.message, 'bad'); }
 });
 $('#out').onclick = signOut;
-$('#noticeForm').addEventListener('submit', async e => { e.preventDefault(); try { await api('/admin/notice', { method: 'POST', body: { notice: e.target.notice.value } }); msg($('#noticeMsg'), 'Saved', 'ok'); } catch (er) { msg($('#noticeMsg'), er.message, 'bad'); } });
+$('#noticeForm').addEventListener('submit', async e => { e.preventDefault(); try { await api('/admin/notice', { method: 'POST', body: { notice: e.target.notice.value, signup: e.target.signup.value } }); msg($('#noticeMsg'), 'Saved', 'ok'); } catch (er) { msg($('#noticeMsg'), er.message, 'bad'); } });
 
 function resetForm() { const f = $('#resForm'); f.reset(); f.id.value = ''; $('#formTitle').textContent = 'Add a resource'; $('#cancel').hidden = true; }
 $('#cancel').onclick = resetForm;

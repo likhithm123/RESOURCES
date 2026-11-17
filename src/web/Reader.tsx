@@ -5,7 +5,9 @@ import React, { useEffect, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { api } from "./api";
 import { useAuth, Msg } from "./App";
+import topicsJson from "../shared/topics.json";
 
+const TOPICS = topicsJson as Record<string, { slug: string; sections: { id: string; title: string; page?: number; items: { id: string; title: string; page?: number }[] }[] }>;
 const RATIO = 1110 / 794;          // notebook page height / width
 const KEEP = 10;                   // painted pages kept in memory
 
@@ -13,6 +15,9 @@ export default function Reader() {
   const { slug } = useParams(); const [sp] = useSearchParams(); const { user } = useAuth();
   const [meta, setMeta] = useState<{ token: string; pages: number; title: string } | null>(null);
   const [err, setErr] = useState(""); const [zoom, setZoom] = useState(1); const [cur, setCur] = useState(1); const [hidden, setHidden] = useState(false);
+  const [statusMsg, setStatusMsg] = useState("");
+  const [loadedPages, setLoadedPages] = useState<Set<number>>(new Set());
+  const markedPages = useRef<Set<number>>(new Set());
   const key = useRef<CryptoKey | null>(null); const holder = useRef<HTMLDivElement>(null);
   const painted = useRef<number[]>([]); const loading = useRef(new Set<number>());
   const start = Math.max(1, Number(sp.get("page")) || 1);
@@ -41,6 +46,7 @@ export default function Reader() {
       canvas.getContext("2d")!.drawImage(bmp, 0, 0); bmp.close();
       canvas.dataset.ok = "1";
       painted.current.push(n);
+      setLoadedPages(s => new Set(s).add(n));
       if (painted.current.length > KEEP) {                          // free the page painted longest ago
         const old = painted.current.shift()!;
         const c = holder.current?.querySelector<HTMLCanvasElement>(`canvas[data-p="${old}"]`);
@@ -61,6 +67,39 @@ export default function Reader() {
     if (target && start > 1) setTimeout(() => target.scrollIntoView({ block: "start" }), 50);
     return () => io.disconnect();
   }, [meta]);
+
+  // Automatically mark page / topic as done after 5 to 6 seconds of viewing after successful loading
+  useEffect(() => {
+    if (!slug || hidden || !loadedPages.has(cur)) return;
+    if (markedPages.current.has(cur)) return;
+
+    const timer = setTimeout(async () => {
+      if (markedPages.current.has(cur)) return;
+      markedPages.current.add(cur);
+
+      const nb = TOPICS[slug];
+      const items: string[] = [];
+      if (nb) {
+        for (const s of nb.sections || []) {
+          for (const it of s.items || []) {
+            if ((it.page || s.page) === cur) items.push(it.id);
+          }
+        }
+      }
+      const explicitItem = cur === start ? sp.get("item") : null;
+      const toMark = Array.from(new Set([...items, ...(explicitItem ? [explicitItem] : [])]));
+
+      if (toMark.length > 0) {
+        try {
+          await api("/progress", "POST", { items: toMark, done: true });
+          setStatusMsg(`✓ Page ${cur} marked as done`);
+          setTimeout(() => setStatusMsg(""), 3500);
+        } catch {}
+      }
+    }, 5500);
+
+    return () => clearTimeout(timer);
+  }, [cur, loadedPages, slug, hidden, start, sp]);
 
   // Deterrents: no context menu, no save/print shortcuts, hide content when the tab is not focused or printing.
   useEffect(() => {
@@ -88,6 +127,7 @@ export default function Reader() {
     <div className="reader-bar">
       <Link to="/" className="btn sm">← Track sheet</Link>
       <b style={{ flex: 1, minWidth: 140 }}>{meta?.title || "Opening..."}</b>
+      {statusMsg && <span className="reader-pill">{statusMsg}</span>}
       {meta && <>
         <button className="sm" onClick={() => go(cur - 1)} aria-label="Previous page">‹</button>
         <label className="row small">Page <input style={{ width: 70 }} type="number" min={1} max={meta.pages} value={cur} onChange={e => { const n = Number(e.target.value); setCur(n); go(n); }} aria-label="Go to page" /> of {meta.pages}</label>

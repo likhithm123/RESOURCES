@@ -82,7 +82,7 @@ export default function Track() {
       const sections = TOPICS[nb.slug]?.sections || [];
       const items = sections.flatMap(s => s.items); const d = items.filter(i => done.has(i.id)).length;
       const doc = docs[nb.slug]; const isOpen = open.has(nb.slug) || !!needle;
-      const read = (page?: number) => `/read/${nb.slug}${page ? `?page=${page}` : ""}`;
+      const read = (page?: number, itemId?: string) => `/read/${nb.slug}${page ? `?page=${page}` : ""}${itemId ? `${page ? "&" : "?"}item=${encodeURIComponent(itemId)}` : ""}`;
       return <div className="nb" key={nb.slug}>
         <div className="nb-head" onClick={() => flip(nb.slug)} role="button" aria-expanded={isOpen}>
           <span className="caret">{isOpen ? "▾" : "▸"}</span>
@@ -102,8 +102,8 @@ export default function Track() {
             </div>
             {sOpen && shown.map(it => <div className={`item ${done.has(it.id) ? "done" : ""}`} key={it.id}>
               <input type="checkbox" checked={done.has(it.id)} onChange={e => mark([it.id], e.target.checked)} aria-label={`Done: ${it.title}`} />
-              {doc ? <Link className="t" to={read(it.page || sec.page)} title="Open the notes at this topic">{it.title}</Link> : <span className="t">{it.title}</span>}
-              {doc && it.page && <Link className="btn sm primary" to={read(it.page)} title="Open our notes at this topic">Notes · p.{it.page}</Link>}
+              {doc ? <Link className="t" to={read(it.page || sec.page, it.id)} onClick={() => mark([it.id], true)} title="Open the notes at this topic">{it.title}</Link> : <span className="t">{it.title}</span>}
+              {doc && it.page && <Link className="btn sm primary" to={read(it.page, it.id)} onClick={() => mark([it.id], true)} title="Open our notes at this topic">Notes · p.{it.page}</Link>}
               {nb.slug === A2Z && <a className="btn sm" href={`https://takeuforward.org/prep-hub/strivers-a2z-dsa-sheet?note=${tufSlug(it.title)}`} target="_blank" rel="noopener noreferrer" title="Extra resource on takeUforward">TUF ↗</a>}
             </div>)}
           </div>;

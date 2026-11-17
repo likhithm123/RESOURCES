@@ -73,7 +73,8 @@ app.post("/auth/signup", async c => {
   await rateLimit(`signup:${clientIp(c)}`, 10, 3600);
   const existing = await db.first("SELECT id, status FROM rp_users WHERE email = ?", [email]);
   if (existing && existing.status !== "unverified") fail(409, "An account with this email already exists. Please sign in.");
-  const roles = jsonArr(b.career_roles, 12);
+  const ALL_ROLES = ["sde", "fullstack", "ai", "ml", "data", "devops", "security", "salesforce"];
+  const roles = jsonArr(b.career_roles !== undefined ? b.career_roles : ALL_ROLES, 12);
   if (existing) await db.run("UPDATE rp_users SET name = ?, pass_hash = ?, career_roles = ?, phone = ? WHERE id = ?", [name, hashPassword(password), roles, phone, existing.id]);
   else await db.run("INSERT INTO rp_users (name, email, pass_hash, career_roles, phone) VALUES (?, ?, ?, ?, ?)", [name, email, hashPassword(password), roles, phone]);
   await issueOtp(email, "verify");

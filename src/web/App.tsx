@@ -14,21 +14,36 @@ export const useAuth = () => useContext(Ctx);
 export const Msg = ({ kind = "err", children }: { kind?: "err" | "ok" | "info"; children: React.ReactNode }) =>
   children ? <div className={`msg ${kind}`} role={kind === "err" ? "alert" : "status"}>{children}</div> : null;
 
+export const ALL_ROLES = CAREER_ROLES.map(r => r.id);
+
 export function RoleChips({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
-  return <div className="chips">{CAREER_ROLES.map(r =>
-    <span key={r.id} role="checkbox" aria-checked={value.includes(r.id)} tabIndex={0} className={`chip ${value.includes(r.id) ? "on" : ""}`}
-      onClick={() => onChange(value.includes(r.id) ? value.filter(x => x !== r.id) : [...value, r.id])}
-      onKeyDown={e => e.key === "Enter" && (e.currentTarget as HTMLElement).click()}>{r.label}</span>)}</div>;
+  const allSelected = CAREER_ROLES.length > 0 && CAREER_ROLES.every(r => value.includes(r.id));
+  return <div>
+    <div className="row" style={{ marginBottom: 8, gap: 8 }}>
+      <button type="button" className="btn sm" onClick={() => onChange(ALL_ROLES)} disabled={allSelected}>Select all</button>
+      <button type="button" className="btn sm" onClick={() => onChange([])} disabled={!value.length}>Clear all</button>
+      <span className="small muted">({value.length} of {CAREER_ROLES.length} selected)</span>
+    </div>
+    <div className="chips">{CAREER_ROLES.map(r =>
+      <span key={r.id} role="checkbox" aria-checked={value.includes(r.id)} tabIndex={0} className={`chip ${value.includes(r.id) ? "on" : ""}`}
+        onClick={() => onChange(value.includes(r.id) ? value.filter(x => x !== r.id) : [...value, r.id])}
+        onKeyDown={e => e.key === "Enter" && (e.currentTarget as HTMLElement).click()}>{r.label}</span>)}</div>
+  </div>;
 }
 
 /* ---------------- Sign in / sign up / reset (all confirmed with an emailed code) ---------------- */
 function AuthPage({ mode }: { mode: "login" | "signup" | "forgot" }) {
   const { setUser } = useAuth(); const nav = useNavigate();
-  const [f, setF] = useState({ name: "", email: "", password: "", code: "", phone: "", roles: [] as string[] });
+  const [f, setF] = useState({ name: "", email: "", password: "", code: "", phone: "", roles: ALL_ROLES });
   const [step, setStep] = useState<"form" | "code">("form");
   const [purpose, setPurpose] = useState("login");
   const [err, setErr] = useState(""); const [info, setInfo] = useState(""); const [busy, setBusy] = useState(false);
-  useEffect(() => { setStep("form"); setErr(""); setInfo(""); }, [mode]);
+  useEffect(() => {
+    setStep("form");
+    setErr("");
+    setInfo("");
+    if (mode === "signup") setF(prev => ({ ...prev, roles: ALL_ROLES }));
+  }, [mode]);
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value });
 
   async function submit(e: React.FormEvent) {
@@ -64,7 +79,7 @@ function AuthPage({ mode }: { mode: "login" | "signup" | "forgot" }) {
         <label className="f"><span>Email</span><input type="email" value={f.email} onChange={set("email")} required autoComplete="email" /></label>
         {mode !== "forgot" && <label className="f"><span>Password {mode === "signup" && "(8+ characters, letters and numbers)"}</span>
           <input type="password" value={f.password} onChange={set("password")} required minLength={8} autoComplete={mode === "signup" ? "new-password" : "current-password"} /></label>}
-        {mode === "signup" && <label className="f"><span>Which roles are you preparing for? (you can change this later)</span><RoleChips value={f.roles} onChange={roles => setF({ ...f, roles })} /></label>}
+        {mode === "signup" && <label className="f"><span>Which topics & roles are you preparing for? (all selected by default — click to remove any you don't need)</span><RoleChips value={f.roles} onChange={roles => setF({ ...f, roles })} /></label>}
         <button className="primary" disabled={busy}>{busy ? "Please wait..." : mode === "signup" ? "Send verification code" : mode === "login" ? "Continue" : "Send reset code"}</button>
       </> : <>
         <label className="f"><span>6-digit code from your email</span>
@@ -84,7 +99,7 @@ function AuthPage({ mode }: { mode: "login" | "signup" | "forgot" }) {
 /* ---------------- Choose roles: tunes the track sheet ---------------- */
 function Plan() {
   const { user, refresh } = useAuth(); const nav = useNavigate();
-  const [roles, setRoles] = useState<string[]>(user!.career_roles); const [name, setName] = useState(user!.name); const [msg, setMsg] = useState("");
+  const [roles, setRoles] = useState<string[]>(user!.career_roles.length ? user!.career_roles : ALL_ROLES); const [name, setName] = useState(user!.name); const [msg, setMsg] = useState("");
   async function save() { await api("/me", "PUT", { name, career_roles: roles, plan: user!.plan }); await refresh(); setMsg("Saved."); nav("/"); }
   return <div className="card" style={{ maxWidth: 640, margin: "auto" }}>
     <h1>Your preparation plan</h1>

@@ -146,6 +146,7 @@ function ConnectAdmin() {
 function Users() {
   const [users, setUsers] = useState<any[]>([]); const [err, setErr] = useState(""); const [q, setQ] = useState("");
   const [detail, setDetail] = useState<any>(null); const [progress, setProgress] = useState<string[]>([]);
+  const [userStreak, setUserStreak] = useState<any>(null);
   const [logins, setLogins] = useState<any[]>([]);
   const load = () => api("/admin/users").then(r => setUsers(r.users)).catch(e => setErr(e.message));
   useEffect(() => { load(); }, []);
@@ -154,7 +155,7 @@ function Users() {
   async function viewUser(id: number) {
     try {
       const r = await api(`/admin/users/${id}/detail`);
-      setDetail(r.user); setProgress(r.progress); setLogins(r.logins || []);
+      setDetail(r.user); setProgress(r.progress); setLogins(r.logins || []); setUserStreak(r.streak || null);
     } catch (e: any) { setErr(e.message); }
   }
   return <>
@@ -172,7 +173,28 @@ function Users() {
       <div style={{ marginTop: 12 }}><span className="muted small">Selected roles:</span>
         <div className="chips" style={{ marginTop: 4 }}>{(detail.career_roles || []).map((r: string) => <span className="chip on" key={r}>{roleLabel(r)}</span>)}{!(detail.career_roles || []).length && <span className="muted small">None selected</span>}</div>
       </div>
-      <div style={{ marginTop: 12 }}><span className="muted small">Progress:</span> <b>{progress.length}</b> topics completed</div>
+      <div className="row" style={{ marginTop: 14, gap: 16 }}>
+        <div className="card" style={{ flex: 1, margin: 0, padding: 12 }}>
+          <div className="muted small">Progress</div>
+          <div style={{ fontSize: 20, fontWeight: 700 }}>{progress.length} <span style={{ fontSize: 13, fontWeight: "normal" }} className="muted">topics done</span></div>
+        </div>
+        <div className="card" style={{ flex: 1, margin: 0, padding: 12 }}>
+          <div className="muted small">Current Streak</div>
+          <div style={{ fontSize: 20, fontWeight: 700, color: (userStreak?.current || 0) > 0 ? "#e65100" : "inherit" }}>
+            🔥 {userStreak?.current || 0} <span style={{ fontSize: 13, fontWeight: "normal" }} className="muted">days</span>
+          </div>
+        </div>
+        <div className="card" style={{ flex: 1, margin: 0, padding: 12 }}>
+          <div className="muted small">Best Streak</div>
+          <div style={{ fontSize: 20, fontWeight: 700 }}>
+            {userStreak?.longest || 0} <span style={{ fontSize: 13, fontWeight: "normal" }} className="muted">days</span>
+          </div>
+        </div>
+      </div>
+      {userStreak?.days && !!userStreak.days.length && <div style={{ marginTop: 12 }}>
+        <span className="muted small">Active days ({userStreak.days.length}): </span>
+        <span className="small">{userStreak.days.slice(-10).join(", ")}{userStreak.days.length > 10 ? "..." : ""}</span>
+      </div>}
       {!!logins.length && <div style={{ marginTop: 16 }}>
         <h3>Recent sign-in history</h3>
         <table>
@@ -187,8 +209,19 @@ function Users() {
         </table>
       </div>}
     </div>}
-    <div className="card"><table><thead><tr><th>User</th><th>Phone</th><th>Status</th><th>Role</th><th>Last sign-in</th><th /></tr></thead><tbody>
-      {shown.map(u => <tr key={u.id}><td><b style={{ cursor: "pointer", textDecoration: "underline" }} onClick={() => viewUser(u.id)}>{u.name}</b><div className="small muted">{u.email}</div></td><td className="small">{u.phone || "—"}</td><td><span className="tag">{u.status}</span></td><td>{u.role}</td><td className="small">{u.last_login_at || "-"}</td>
+    <div className="card"><table><thead><tr><th>User</th><th>Phone</th><th>Streak</th><th>Status</th><th>Role</th><th>Last sign-in</th><th /></tr></thead><tbody>
+      {shown.map(u => <tr key={u.id}>
+        <td><b style={{ cursor: "pointer", textDecoration: "underline" }} onClick={() => viewUser(u.id)}>{u.name}</b><div className="small muted">{u.email}</div></td>
+        <td className="small">{u.phone || "—"}</td>
+        <td>
+          <span className="tag" style={{ color: (u.streak?.current || 0) > 0 ? "#e65100" : "inherit", fontWeight: 600 }}>
+            🔥 {u.streak?.current || 0}d
+          </span>
+          <div className="small muted">best: {u.streak?.longest || 0}d</div>
+        </td>
+        <td><span className="tag">{u.status}</span></td>
+        <td>{u.role}</td>
+        <td className="small">{u.last_login_at || "-"}</td>
         <td><div className="row">
           <button className="sm" onClick={() => act(u.id, { action: "role", role: u.role === "admin" ? "student" : "admin" })}>{u.role === "admin" ? "Remove admin" : "Make admin"}</button>
           <button className="sm" onClick={() => act(u.id, { action: u.status === "blocked" ? "unblock" : "block" })}>{u.status === "blocked" ? "Unblock" : "Block"}</button>

@@ -55,6 +55,44 @@ export async function rateLimit(bucket, limit, windowSec) {
 export const audit = (c, action, detail = "") =>
   db.run("INSERT INTO rp_audit (user_id, action, detail, ip) VALUES (?, ?, ?, ?)", [c.get("user")?.id ?? null, action, String(detail).slice(0, 500), clientIp(c)]);
 
+/** Calculates current streak, longest streak, and active days list */
+export function calculateStreak(dayStrings) {
+  if (!dayStrings || !dayStrings.length) return { current: 0, longest: 0, days: [] };
+  const uniqueDays = Array.from(new Set(dayStrings)).filter(Boolean).sort();
+  if (!uniqueDays.length) return { current: 0, longest: 0, days: [] };
+
+  const dateObjs = uniqueDays.map(d => new Date(d + "T00:00:00Z"));
+  let longest = 1;
+  let cur = 1;
+
+  for (let i = 1; i < dateObjs.length; i++) {
+    const diffDays = Math.round((dateObjs[i] - dateObjs[i - 1]) / 86400000);
+    if (diffDays === 1) {
+      cur++;
+      if (cur > longest) longest = cur;
+    } else if (diffDays > 1) {
+      cur = 1;
+    }
+  }
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const today = new Date(todayStr + "T00:00:00Z");
+  const lastActive = dateObjs[dateObjs.length - 1];
+  const daysSinceLast = Math.round((today - lastActive) / 86400000);
+
+  let current = 0;
+  if (daysSinceLast === 0 || daysSinceLast === 1) {
+    current = 1;
+    for (let i = dateObjs.length - 1; i > 0; i--) {
+      const diffDays = Math.round((dateObjs[i] - dateObjs[i - 1]) / 86400000);
+      if (diffDays === 1) current++;
+      else break;
+    }
+  }
+
+  return { current, longest, days: uniqueDays };
+}
+
 /* ---------------- Email (SMTP) ---------------- */
 let transport;
 const esc = s => String(s).replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));

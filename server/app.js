@@ -6,7 +6,7 @@ import { db } from "./db.js";
 import {
   HttpError, fail, randomToken, sha256, hmacHex, safeEqual, secret, hashPassword, verifyPassword, checkPassword,
   cleanEmail, str, safeUrl, jsonArr, parse, adminEmails, clientIp, rateLimit, audit, issueOtp, consumeOtp,
-  ikConfigured, ikFolder, ikUploadAuth, ikPage, ikDeleteFolder, sendMail,
+  ikConfigured, ikFolder, ikUploadAuth, ikPage, ikDeleteFolder, sendMail, calculateStreak,
 } from "./lib.js";
 
 const COOKIE = "rp_session";
@@ -155,7 +155,12 @@ app.put("/me", async c => {
 /* ---------------- Progress (track sheet) ---------------- */
 app.get("/progress", async c => {
   const u = auth(c);
-  return c.json({ done: (await db.all("SELECT item_id FROM rp_progress WHERE user_id = ?", [u.id])).map(r => r.item_id) });
+  const doneRows = await db.all("SELECT item_id, updated_at FROM rp_progress WHERE user_id = ?", [u.id]);
+  const days = doneRows.map(r => r.updated_at ? r.updated_at.slice(0, 10) : "").filter(Boolean);
+  return c.json({
+    done: doneRows.map(r => r.item_id),
+    streak: calculateStreak(days)
+  });
 });
 app.post("/progress", async c => {
   const u = auth(c), b = await body(c);
@@ -245,15 +250,32 @@ app.get("/admin/stats", async c => {
     imagekit: ikConfigured(),
   });
 });
-app.get("/admin/users", async c => { admin(c); return c.json({ users: await db.all("SELECT id, name, email, role, status, career_roles, phone, created_at, last_login_at FROM rp_users ORDER BY id DESC LIMIT 1000") }); });
+app.get("/admin/users", async c => {
+  admin(c);
+  const users = await db.all("SELECT id, name, email, role, status, career_roles, phone, created_at, last_login_at FROM rp_users ORDER BY id DESC LIMIT 1000");
+  const progressRows = await db.all("SELECT user_id, substr(updated_at, 1, 10) as day FROM rp_progress");
+  const userDays = new Map();
+  for (const r of progressRows) {
+    if (!r.day) continue;
+    if (!userDays.has(r.user_id)) userDays.set(r.user_id, []);
+    userDays.get(r.user_id).push(r.day);
+  }
+  const usersWithStreaks = users.map(u => ({
+    ...u,
+    streak: calculateStreak(userDays.get(u.id) || [])
+  }));
+  return c.json({ users: usersWithStreaks });
+});
 app.get("/admin/users/:id/detail", async c => {
   admin(c);
   const id = Number(c.req.param("id"));
   const u = await db.first("SELECT id, name, email, role, status, career_roles, plan, phone, created_at, last_login_at FROM rp_users WHERE id = ?", [id]);
   if (!u) fail(404, "User not found.");
-  const progress = await db.all("SELECT item_id FROM rp_progress WHERE user_id = ?", [id]);
+  const progress = await db.all("SELECT item_id, updated_at FROM rp_progress WHERE user_id = ?", [id]);
+  const days = progress.map(r => r.updated_at ? r.updated_at.slice(0, 10) : "").filter(Boolean);
+  const streak = calculateStreak(days);
   const logins = await db.all("SELECT id, action, detail, ip, created_at FROM rp_audit WHERE user_id = ? AND action IN ('auth.login', 'auth.logout') ORDER BY id DESC LIMIT 20", [id]);
-  return c.json({ user: { ...u, career_roles: parse(u.career_roles, []), plan: parse(u.plan, []) }, progress: progress.map(r => r.item_id), logins });
+  return c.json({ user: { ...u, career_roles: parse(u.career_roles, []), plan: parse(u.plan, []) }, progress: progress.map(r => r.item_id), streak, logins });
 });
 app.post("/admin/users/:id", async c => {
   const me = admin(c), b = await body(c), id = Number(c.req.param("id"));

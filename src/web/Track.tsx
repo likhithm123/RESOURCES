@@ -18,11 +18,15 @@ const Bar = ({ d, n }: { d: number; n: number }) => <><div className="bar" aria-
 export default function Track() {
   const { user, refresh } = useAuth();
   const [done, setDone] = useState<Set<string>>(new Set());
+  const [streak, setStreak] = useState<{ current: number; longest: number; days: string[] }>({ current: 0, longest: 0, days: [] });
   const [docs, setDocs] = useState<Record<string, Doc>>({});
   const [open, setOpen] = useState<Set<string>>(new Set());
   const [q, setQ] = useState(""); const [hideDone, setHideDone] = useState(false); const [err, setErr] = useState(""); const [edit, setEdit] = useState(false);
   useEffect(() => {
-    api("/progress").then(r => setDone(new Set(r.done))).catch(e => setErr(e.message));
+    api("/progress").then(r => {
+      setDone(new Set(r.done));
+      if (r.streak) setStreak(r.streak);
+    }).catch(e => setErr(e.message));
     api("/docs").then(r => setDocs(Object.fromEntries(r.docs.map((d: Doc) => [d.slug, d])))).catch(() => {});
   }, []);
 
@@ -48,7 +52,19 @@ export default function Track() {
       <div className="row"><div style={{ flex: 1, minWidth: 220 }}>
         <h1>Hi {user!.name.split(" ")[0]}, here is your track sheet</h1>
         <div className="muted small">Roles: {user!.career_roles.map(r => CAREER_ROLES.find(x => x.id === r)?.label).join(" · ")} · <Link to="/plan">change</Link></div>
-      </div><div style={{ textAlign: "right" }}><div style={{ fontSize: 28, fontWeight: 700, color: "var(--ink)" }}>{pct(finished, total)}%</div><div className="small muted">{finished} of {total} topics done</div></div></div>
+      </div>
+      <div className="row" style={{ gap: 20 }}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontSize: 28, fontWeight: 700, color: streak.current > 0 ? "#e65100" : "var(--ink)" }}>
+            🔥 {streak.current}
+          </div>
+          <div className="small muted">day streak (best: {streak.longest})</div>
+        </div>
+        <div style={{ textAlign: "right" }}>
+          <div style={{ fontSize: 28, fontWeight: 700, color: "var(--ink)" }}>{pct(finished, total)}%</div>
+          <div className="small muted">{finished} of {total} topics done</div>
+        </div>
+      </div></div>
       <div className="row" style={{ marginTop: 10 }}><Bar d={finished} n={total} /></div>
     </div>
     <Msg>{err}</Msg>

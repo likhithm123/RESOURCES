@@ -2,16 +2,16 @@
 import React, { useEffect, useState } from "react";
 import { api, type Doc } from "./api";
 import { Msg, RoleChips } from "./App";
-import { NOTEBOOKS } from "../shared/catalog";
+import { NOTEBOOKS, roleLabel } from "../shared/catalog";
 
-const TABS = ["Overview", "Documents", "Resources & Projects", "Connect", "Users"] as const;
+const TABS = ["Overview", "Documents", "Resources & Projects", "Connect", "Users", "Team"] as const;
 
 export default function Admin() {
   const [tab, setTab] = useState<(typeof TABS)[number]>("Overview");
   return <>
     <h1>Admin</h1>
     <div className="chips" style={{ margin: "10px 0 16px" }}>{TABS.map(t => <span key={t} className={`chip ${tab === t ? "on" : ""}`} onClick={() => setTab(t)}>{t}</span>)}</div>
-    {tab === "Overview" && <Overview />}{tab === "Documents" && <Documents />}{tab === "Resources & Projects" && <LinksAdmin />}{tab === "Connect" && <ConnectAdmin />}{tab === "Users" && <Users />}
+    {tab === "Overview" && <Overview />}{tab === "Documents" && <Documents />}{tab === "Resources & Projects" && <LinksAdmin />}{tab === "Connect" && <ConnectAdmin />}{tab === "Users" && <Users />}{tab === "Team" && <TeamAdmin />}
   </>;
 }
 
@@ -145,18 +145,82 @@ function ConnectAdmin() {
 
 function Users() {
   const [users, setUsers] = useState<any[]>([]); const [err, setErr] = useState(""); const [q, setQ] = useState("");
+  const [detail, setDetail] = useState<any>(null); const [progress, setProgress] = useState<string[]>([]);
   const load = () => api("/admin/users").then(r => setUsers(r.users)).catch(e => setErr(e.message));
   useEffect(() => { load(); }, []);
   const act = async (id: number, b: any) => { setErr(""); await api(`/admin/users/${id}`, "POST", b).catch(e => setErr(e.message)); load(); };
   const shown = users.filter(u => !q || (u.name + u.email).toLowerCase().includes(q.toLowerCase()));
+  async function viewUser(id: number) {
+    try {
+      const r = await api(`/admin/users/${id}/detail`);
+      setDetail(r.user); setProgress(r.progress);
+    } catch (e: any) { setErr(e.message); }
+  }
   return <>
     <Msg>{err}</Msg><input placeholder="Search users" value={q} onChange={e => setQ(e.target.value)} style={{ marginBottom: 12 }} aria-label="Search users" />
-    <div className="card"><table><thead><tr><th>User</th><th>Status</th><th>Role</th><th>Last sign-in</th><th /></tr></thead><tbody>
-      {shown.map(u => <tr key={u.id}><td><b>{u.name}</b><div className="small muted">{u.email}</div></td><td><span className="tag">{u.status}</span></td><td>{u.role}</td><td className="small">{u.last_login_at || "-"}</td>
+    {detail && <div className="card" style={{ marginBottom: 16 }}>
+      <div className="row"><h2 style={{ flex: 1 }}>{detail.name}</h2><button className="sm" onClick={() => setDetail(null)}>Close</button></div>
+      <div className="grid" style={{ gap: 8, marginTop: 8 }}>
+        <div><span className="muted small">Email:</span> {detail.email}</div>
+        <div><span className="muted small">Phone:</span> {detail.phone || "—"}</div>
+        <div><span className="muted small">Role:</span> <span className="tag">{detail.role}</span></div>
+        <div><span className="muted small">Status:</span> <span className="tag">{detail.status}</span></div>
+        <div><span className="muted small">Joined:</span> {detail.created_at}</div>
+        <div><span className="muted small">Last sign-in:</span> {detail.last_login_at || "—"}</div>
+      </div>
+      <div style={{ marginTop: 12 }}><span className="muted small">Selected roles:</span>
+        <div className="chips" style={{ marginTop: 4 }}>{(detail.career_roles || []).map((r: string) => <span className="chip on" key={r}>{roleLabel(r)}</span>)}{!(detail.career_roles || []).length && <span className="muted small">None selected</span>}</div>
+      </div>
+      <div style={{ marginTop: 12 }}><span className="muted small">Progress:</span> <b>{progress.length}</b> topics completed</div>
+    </div>}
+    <div className="card"><table><thead><tr><th>User</th><th>Phone</th><th>Status</th><th>Role</th><th>Last sign-in</th><th /></tr></thead><tbody>
+      {shown.map(u => <tr key={u.id}><td><b style={{ cursor: "pointer", textDecoration: "underline" }} onClick={() => viewUser(u.id)}>{u.name}</b><div className="small muted">{u.email}</div></td><td className="small">{u.phone || "—"}</td><td><span className="tag">{u.status}</span></td><td>{u.role}</td><td className="small">{u.last_login_at || "-"}</td>
         <td><div className="row">
           <button className="sm" onClick={() => act(u.id, { action: "role", role: u.role === "admin" ? "student" : "admin" })}>{u.role === "admin" ? "Remove admin" : "Make admin"}</button>
           <button className="sm" onClick={() => act(u.id, { action: u.status === "blocked" ? "unblock" : "block" })}>{u.status === "blocked" ? "Unblock" : "Block"}</button>
           <button className="sm danger" onClick={() => confirm(`Delete ${u.email}?`) && act(u.id, { action: "delete" })}>Delete</button></div></td></tr>)}
+    </tbody></table></div>
+  </>;
+}
+
+function TeamAdmin() {
+  const [members, setMembers] = useState<any[]>([]); const [err, setErr] = useState("");
+  const blank = { id: 0, name: "", role_title: "", photo_url: "", linkedin: "", github: "", sort_order: 0 };
+  const [f, setF] = useState<any>(blank);
+  const load = () => api("/admin/team").then(r => setMembers(r.members)).catch(e => setErr(e.message));
+  useEffect(() => { load(); }, []);
+  const set = (k: string) => (e: any) => setF({ ...f, [k]: e.target.value });
+  async function save(e: React.FormEvent) {
+    e.preventDefault(); setErr("");
+    try {
+      if (f.id) await api(`/admin/team/${f.id}`, "PUT", f);
+      else await api("/admin/team", "POST", f);
+      setF(blank); load();
+    } catch (x: any) { setErr(x.message); }
+  }
+  return <>
+    <Msg>{err}</Msg>
+    <form className="card" onSubmit={save}>
+      <h2>{f.id ? "Edit" : "Add"} team member</h2>
+      <div className="grid">
+        <label className="f"><span>Name</span><input value={f.name} onChange={set("name")} required /></label>
+        <label className="f"><span>Role / title</span><input value={f.role_title} onChange={set("role_title")} placeholder="e.g. Full Stack Developer" /></label>
+        <label className="f"><span>Photo URL</span><input value={f.photo_url} onChange={set("photo_url")} placeholder="https://..." /></label>
+        <label className="f"><span>LinkedIn URL</span><input value={f.linkedin} onChange={set("linkedin")} placeholder="https://linkedin.com/in/..." /></label>
+        <label className="f"><span>GitHub URL</span><input value={f.github} onChange={set("github")} placeholder="https://github.com/..." /></label>
+        <label className="f"><span>Sort order</span><input type="number" value={f.sort_order} onChange={set("sort_order")} /></label>
+      </div>
+      <div className="row"><button className="primary">{f.id ? "Save changes" : "Add member"}</button>{!!f.id && <button type="button" onClick={() => setF(blank)}>Cancel</button>}</div>
+    </form>
+    <div className="card"><h2>Team members ({members.length})</h2><table><thead><tr><th>Photo</th><th>Name</th><th>Role</th><th /></tr></thead><tbody>
+      {members.map(m => <tr key={m.id}>
+        <td>{m.photo_url ? <img src={m.photo_url} alt="" style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover" }} /> : <div className="avatar" style={{ width: 36, height: 36, fontSize: 14, lineHeight: "36px" }}>{m.name.charAt(0)}</div>}</td>
+        <td><b>{m.name}</b></td>
+        <td className="small">{m.role_title}</td>
+        <td><div className="row">
+          <button className="sm" onClick={() => { setF(m); window.scrollTo(0, 0); }}>Edit</button>
+          <button className="sm danger" onClick={async () => { if (confirm(`Remove ${m.name}?`)) { await api(`/admin/team/${m.id}`, "DELETE"); load(); } }}>Delete</button>
+        </div></td></tr>)}
     </tbody></table></div>
   </>;
 }

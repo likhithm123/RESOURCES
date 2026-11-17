@@ -92,3 +92,14 @@ CREATE TABLE IF NOT EXISTS rp_rate (
   count INTEGER NOT NULL,
   reset_at INTEGER NOT NULL
 );
+-- Web team members (admin CMS)
+CREATE TABLE IF NOT EXISTS rp_team_members (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  role_title TEXT NOT NULL DEFAULT '',
+  photo_url TEXT NOT NULL DEFAULT '',
+  linkedin TEXT NOT NULL DEFAULT '',
+  github TEXT NOT NULL DEFAULT '',
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);

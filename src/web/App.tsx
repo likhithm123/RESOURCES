@@ -24,7 +24,7 @@ export function RoleChips({ value, onChange }: { value: string[]; onChange: (v: 
 /* ---------------- Sign in / sign up / reset (all confirmed with an emailed code) ---------------- */
 function AuthPage({ mode }: { mode: "login" | "signup" | "forgot" }) {
   const { setUser } = useAuth(); const nav = useNavigate();
-  const [f, setF] = useState({ name: "", email: "", password: "", code: "", roles: [] as string[] });
+  const [f, setF] = useState({ name: "", email: "", password: "", code: "", phone: "", roles: [] as string[] });
   const [step, setStep] = useState<"form" | "code">("form");
   const [purpose, setPurpose] = useState("login");
   const [err, setErr] = useState(""); const [info, setInfo] = useState(""); const [busy, setBusy] = useState(false);
@@ -35,7 +35,7 @@ function AuthPage({ mode }: { mode: "login" | "signup" | "forgot" }) {
     e.preventDefault(); setErr(""); setBusy(true);
     try {
       if (step === "form") {
-        if (mode === "signup") { await api("/auth/signup", "POST", { name: f.name, email: f.email, password: f.password, career_roles: f.roles }); setPurpose("verify"); }
+        if (mode === "signup") { await api("/auth/signup", "POST", { name: f.name, email: f.email, password: f.password, phone: f.phone, career_roles: f.roles }); setPurpose("verify"); }
         else if (mode === "login") {
           const r = await api("/auth/login", "POST", { email: f.email, password: f.password });
           if (r.user) { setUser(r.user); nav(r.user.career_roles.length ? "/" : "/plan"); return; }
@@ -60,6 +60,7 @@ function AuthPage({ mode }: { mode: "login" | "signup" | "forgot" }) {
     <form onSubmit={submit}>
       {step === "form" ? <>
         {mode === "signup" && <label className="f"><span>Full name</span><input value={f.name} onChange={set("name")} required autoComplete="name" /></label>}
+        {mode === "signup" && <label className="f"><span>Contact number</span><input type="tel" value={f.phone} onChange={set("phone")} autoComplete="tel" placeholder="e.g. 9876543210" /></label>}
         <label className="f"><span>Email</span><input type="email" value={f.email} onChange={set("email")} required autoComplete="email" /></label>
         {mode !== "forgot" && <label className="f"><span>Password {mode === "signup" && "(8+ characters, letters and numbers)"}</span>
           <input type="password" value={f.password} onChange={set("password")} required minLength={8} autoComplete={mode === "signup" ? "new-password" : "current-password"} /></label>}
@@ -96,28 +97,24 @@ function Plan() {
 }
 
 function WebTeam() {
-  const members = [
-    {
-      name: "Likhith Medarametla",
-      role: "Full Stack Developer",
-      linkedin: "https://www.linkedin.com/in/likhith-medarametla-0039b6320",
-      github: "https://github.com/likhithm123",
-      initial: "L",
-    },
-  ];
-  return <div style={{ maxWidth: 640, margin: "auto" }}>
+  const [members, setMembers] = useState<any[]>([]);
+  useEffect(() => { api("/team").then(r => setMembers(r.members)).catch(() => {}); }, []);
+  return <div style={{ maxWidth: 720, margin: "auto" }}>
     <h1>Brought to you by</h1>
+    {!members.length && <div className="card muted">No team members added yet.</div>}
     <div className="grid">
-      {members.map(m => <div className="card" key={m.name} style={{ marginBottom: 0 }}>
+      {members.map(m => <div className="card" key={m.id} style={{ marginBottom: 0 }}>
         <div className="team" style={{ flexDirection: "column", alignItems: "center", gap: 12, padding: "24px 0" }}>
-          <div className="avatar" aria-hidden style={{ width: 56, height: 56, fontSize: 24, lineHeight: "56px" }}>{m.initial}</div>
+          {m.photo_url
+            ? <img src={m.photo_url} alt={m.name} style={{ width: 72, height: 72, borderRadius: "50%", objectFit: "cover" }} />
+            : <div className="avatar" aria-hidden style={{ width: 56, height: 56, fontSize: 24, lineHeight: "56px" }}>{m.name.charAt(0)}</div>}
           <div style={{ textAlign: "center" }}>
             <b style={{ fontSize: 18 }}>{m.name}</b>
-            <div className="small muted" style={{ marginTop: 4 }}>{m.role}</div>
+            {m.role_title && <div className="small muted" style={{ marginTop: 4 }}>{m.role_title}</div>}
           </div>
           <div className="row" style={{ gap: 12 }}>
-            <a className="btn sm primary" href={m.linkedin} target="_blank" rel="noopener noreferrer">LinkedIn ↗</a>
-            <a className="btn sm" href={m.github} target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+            {m.linkedin && <a className="btn sm primary" href={m.linkedin} target="_blank" rel="noopener noreferrer">LinkedIn ↗</a>}
+            {m.github && <a className="btn sm" href={m.github} target="_blank" rel="noopener noreferrer">GitHub ↗</a>}
           </div>
         </div>
       </div>)}

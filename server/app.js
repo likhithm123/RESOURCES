@@ -67,12 +67,13 @@ app.post("/auth/signup", async c => {
   const b = await body(c);
   const email = cleanEmail(b.email), name = str(b.name, 80), password = checkPassword(b.password);
   if (name.length < 2) fail(400, "Enter your name.");
+  const phone = str(b.phone, 15);
   await rateLimit(`signup:${clientIp(c)}`, 10, 3600);
   const existing = await db.first("SELECT id, status FROM rp_users WHERE email = ?", [email]);
   if (existing && existing.status !== "unverified") fail(409, "An account with this email already exists. Please sign in.");
   const roles = jsonArr(b.career_roles, 12);
-  if (existing) await db.run("UPDATE rp_users SET name = ?, pass_hash = ?, career_roles = ? WHERE id = ?", [name, hashPassword(password), roles, existing.id]);
-  else await db.run("INSERT INTO rp_users (name, email, pass_hash, career_roles) VALUES (?, ?, ?, ?)", [name, email, hashPassword(password), roles]);
+  if (existing) await db.run("UPDATE rp_users SET name = ?, pass_hash = ?, career_roles = ?, phone = ? WHERE id = ?", [name, hashPassword(password), roles, phone, existing.id]);
+  else await db.run("INSERT INTO rp_users (name, email, pass_hash, career_roles, phone) VALUES (?, ?, ?, ?, ?)", [name, email, hashPassword(password), roles, phone]);
   await issueOtp(email, "verify");
   return c.json({ ok: true, otp: true });
 });
@@ -236,7 +237,15 @@ app.get("/admin/stats", async c => {
     imagekit: ikConfigured(),
   });
 });
-app.get("/admin/users", async c => { admin(c); return c.json({ users: await db.all("SELECT id, name, email, role, status, career_roles, created_at, last_login_at FROM rp_users ORDER BY id DESC LIMIT 1000") }); });
+app.get("/admin/users", async c => { admin(c); return c.json({ users: await db.all("SELECT id, name, email, role, status, career_roles, phone, created_at, last_login_at FROM rp_users ORDER BY id DESC LIMIT 1000") }); });
+app.get("/admin/users/:id/detail", async c => {
+  admin(c);
+  const id = Number(c.req.param("id"));
+  const u = await db.first("SELECT id, name, email, role, status, career_roles, plan, phone, created_at, last_login_at FROM rp_users WHERE id = ?", [id]);
+  if (!u) fail(404, "User not found.");
+  const progress = await db.all("SELECT item_id FROM rp_progress WHERE user_id = ?", [id]);
+  return c.json({ user: { ...u, career_roles: parse(u.career_roles, []), plan: parse(u.plan, []) }, progress: progress.map(r => r.item_id) });
+});
 app.post("/admin/users/:id", async c => {
   const me = admin(c), b = await body(c), id = Number(c.req.param("id"));
   if (id === me.id) fail(400, "You cannot change your own account here.");
@@ -310,5 +319,29 @@ app.post("/admin/connect/:id", async c => {
   return c.json({ ok: true });
 });
 app.get("/admin/audit", async c => { admin(c); return c.json({ rows: await db.all("SELECT a.*, u.email FROM rp_audit a LEFT JOIN rp_users u ON u.id = a.user_id ORDER BY a.id DESC LIMIT 300") }); });
+
+/* ---------------- Team members (public list + admin CMS) ---------------- */
+app.get("/team", async c => {
+  return c.json({ members: await db.all("SELECT id, name, role_title, photo_url, linkedin, github FROM rp_team_members ORDER BY sort_order, id") });
+});
+app.get("/admin/team", async c => { admin(c); return c.json({ members: await db.all("SELECT * FROM rp_team_members ORDER BY sort_order, id") }); });
+app.post("/admin/team", async c => {
+  admin(c); const b = await body(c);
+  const name = str(b.name, 80); if (name.length < 2) fail(400, "Enter a name.");
+  await db.run("INSERT INTO rp_team_members (name, role_title, photo_url, linkedin, github, sort_order) VALUES (?,?,?,?,?,?)",
+    [name, str(b.role_title, 80), safeUrl(b.photo_url) || str(b.photo_url, 500), safeUrl(b.linkedin), safeUrl(b.github), Number(b.sort_order) || 0]);
+  return c.json({ ok: true });
+});
+app.put("/admin/team/:id", async c => {
+  admin(c); const b = await body(c), id = Number(c.req.param("id"));
+  const name = str(b.name, 80); if (name.length < 2) fail(400, "Enter a name.");
+  await db.run("UPDATE rp_team_members SET name = ?, role_title = ?, photo_url = ?, linkedin = ?, github = ?, sort_order = ? WHERE id = ?",
+    [name, str(b.role_title, 80), safeUrl(b.photo_url) || str(b.photo_url, 500), safeUrl(b.linkedin), safeUrl(b.github), Number(b.sort_order) || 0, id]);
+  return c.json({ ok: true });
+});
+app.delete("/admin/team/:id", async c => {
+  admin(c); await db.run("DELETE FROM rp_team_members WHERE id = ?", [Number(c.req.param("id"))]);
+  return c.json({ ok: true });
+});
 
 app.all("*", c => c.json({ error: "Not found." }, 404));

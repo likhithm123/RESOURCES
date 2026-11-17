@@ -48,5 +48,12 @@ export const db = {
   async migrate() {
     const sql = fs.readFileSync(new URL("./schema.sql", import.meta.url), "utf8").replace(/^--.*$/gm, "");
     for (const stmt of sql.split(";").map(s => s.trim()).filter(Boolean)) await this.run(stmt, []);
+    // Safe column additions (ignored if already present)
+    const safeAlters = [
+      "ALTER TABLE rp_users ADD COLUMN phone TEXT NOT NULL DEFAULT ''"
+    ];
+    for (const alt of safeAlters) {
+      try { await this.run(alt, []); } catch { /* column already exists */ }
+    }
   },
 };

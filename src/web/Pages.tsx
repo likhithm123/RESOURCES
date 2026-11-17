@@ -11,7 +11,7 @@ export function Library() {
   const shown = (docs || []).filter(d => all || !d.career_roles.length || d.career_roles.some(r => user!.career_roles.includes(r)));
   return <>
     <div className="row"><h1 style={{ flex: 1 }}>Notes</h1><label className="row small"><input type="checkbox" checked={all} onChange={e => setAll(e.target.checked)} /> Show notes for all roles</label></div>
-    <p className="muted">Handwritten-style notebooks. They open in the protected reader (view only).</p>
+    <p className="muted">Handwritten-style notebooks for each role.</p>
     <Msg>{err}</Msg>
     {docs && !shown.length && <div className="card">No notes published for your roles yet.</div>}
     <div className="grid">{shown.map(d => <div className="card" key={d.id} style={{ marginBottom: 0 }}>

@@ -86,7 +86,7 @@ export default function Track() {
             </div>
             {sOpen && shown.map(it => <div className={`item ${done.has(it.id) ? "done" : ""}`} key={it.id}>
               <input type="checkbox" checked={done.has(it.id)} onChange={e => mark([it.id], e.target.checked)} aria-label={`Done: ${it.title}`} />
-              <span className="t">{it.title}</span>
+              {doc ? <Link className="t" to={read(it.page || sec.page)} title="Open the notes at this topic">{it.title}</Link> : <span className="t">{it.title}</span>}
               {doc && it.page && <Link className="btn sm primary" to={read(it.page)} title="Open our notes at this topic">Notes · p.{it.page}</Link>}
               {nb.slug === A2Z && <a className="btn sm" href={`https://takeuforward.org/prep-hub/strivers-a2z-dsa-sheet?note=${tufSlug(it.title)}`} target="_blank" rel="noopener noreferrer" title="Extra resource on takeUforward">TUF ↗</a>}
             </div>)}
@@ -94,6 +94,7 @@ export default function Track() {
         })}
       </div>;
     })}
+    {!Object.keys(docs).length && <div className="card small muted">Notes PDFs are being published. Topic links open the notes once a notebook is published.</div>}
     {!mine.length && <div className="card">No notebooks yet. <Link to="/plan">Choose your roles</Link>.</div>}
   </>;
 }

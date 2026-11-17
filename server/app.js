@@ -127,6 +127,16 @@ app.post("/auth/logout", async c => {
   deleteCookie(c, COOKIE, { path: "/" });
   return c.json({ ok: true });
 });
+app.post("/auth/resend", async c => {
+  const b = await body(c);
+  const email = cleanEmail(b.email);
+  const purpose = b.purpose === "reset" ? "reset" : "verify";
+  await rateLimit(`resend:${email}`, 6, 300);
+  const u = await db.first("SELECT id, status FROM rp_users WHERE email = ? AND status != 'blocked'", [email]);
+  if (!u) fail(404, "Account not found. Please sign up.");
+  await issueOtp(email, purpose);
+  return c.json({ ok: true });
+});
 app.post("/auth/forgot", async c => {
   const email = cleanEmail((await body(c)).email);
   await rateLimit(`forgot-ip:${clientIp(c)}`, 10, 3600);

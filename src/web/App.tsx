@@ -46,6 +46,20 @@ function AuthPage({ mode }: { mode: "login" | "signup" | "forgot" }) {
   }, [mode]);
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value });
 
+  async function resendCode() {
+    setErr(""); setBusy(true);
+    try {
+      if (mode === "signup" && f.name && f.password && f.phone) {
+        await api("/auth/signup", "POST", { name: f.name, email: f.email, password: f.password, phone: f.phone, career_roles: f.roles });
+      } else if (purpose === "reset") {
+        await api("/auth/forgot", "POST", { email: f.email });
+      } else {
+        await api("/auth/resend", "POST", { email: f.email, purpose });
+      }
+      setInfo(`A new 6-digit code was sent to ${f.email}.`);
+    } catch (x: any) { setErr(x.message); } finally { setBusy(false); }
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault(); setErr(""); setBusy(true);
     try {
@@ -90,11 +104,15 @@ function AuthPage({ mode }: { mode: "login" | "signup" | "forgot" }) {
           <input value={f.code} onChange={set("code")} inputMode="numeric" pattern="[0-9]{6}" maxLength={6} required autoFocus autoComplete="one-time-code" style={{ letterSpacing: 6, fontSize: 20 }} /></label>
         <p className="muted small">The code is valid for 10 minutes. <b>Not in your inbox? Check your Spam / Junk folder too</b> and mark the email as "Not spam".</p>
         {purpose === "reset" && <label className="f"><span>New password</span><input type="password" value={f.password} onChange={set("password")} required minLength={8} autoComplete="new-password" /></label>}
-        <div className="row" style={{ justifyContent: "center", marginTop: 14 }}>
-          <button className={purpose === "verify" ? "btn-signup" : "primary"} disabled={busy} style={purpose === "verify" ? { minWidth: 200 } : undefined}>
+        <div style={{ display: "flex", justifyContent: "center", marginTop: 18 }}>
+          <button className={purpose === "verify" ? "btn-signup" : "primary"} disabled={busy} style={purpose === "verify" ? { minWidth: 220 } : undefined}>
             {busy ? "Checking..." : purpose === "reset" ? "Change password" : "Verify and continue"}
           </button>
-          <button type="button" className="link" onClick={() => { setStep("form"); setInfo(""); }}>Use a different email / resend</button></div>
+        </div>
+        <div className="row" style={{ justifyContent: "center", gap: 12, marginTop: 14 }}>
+          <button type="button" className="btn sm" onClick={resendCode} disabled={busy}>↻ Resend code</button>
+          <button type="button" className="btn sm" onClick={() => { setStep("form"); setInfo(""); setErr(""); }} disabled={busy}>Use a different email</button>
+        </div>
       </>}
     </form>
     <p className="small" style={{ marginTop: 16 }}>

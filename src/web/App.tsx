@@ -129,7 +129,7 @@ function Footer() {
   return <footer className="footer">
     <div>Built for students preparing for software, AI, data, cloud and security roles.</div>
     <div className="team">
-      <Link to="/webteam" style={{ fontWeight: 600 }}>WebTeam</Link>
+      <Link to="/webteam" style={{ fontWeight: 600 }}>Brought to you by</Link>
     </div>
   </footer>;
 }

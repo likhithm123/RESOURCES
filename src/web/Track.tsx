@@ -27,7 +27,7 @@ export default function Track() {
       setDone(new Set(r.done));
       if (r.streak) setStreak(r.streak);
     }).catch(e => setErr(e.message));
-    api("/docs").then(r => setDocs(Object.fromEntries(r.docs.map((d: Doc) => [d.slug, d])))).catch(() => {});
+    api("/docs").then(r => setDocs(Object.fromEntries(r.docs.map((d: Doc) => [d.slug, d])))).catch(() => { });
   }, []);
 
   // plan = explicit list of notebook slugs; "-slug" hides one suggested by the roles.
@@ -53,18 +53,18 @@ export default function Track() {
         <h1>Hi {user!.name.split(" ")[0]}, here is your track sheet</h1>
         <div className="muted small">Roles: {user!.career_roles.map(r => CAREER_ROLES.find(x => x.id === r)?.label).join(" · ")} · <Link to="/plan">change</Link></div>
       </div>
-      <div className="row" style={{ gap: 20 }}>
-        <div style={{ textAlign: "center" }}>
-          <div style={{ fontSize: 28, fontWeight: 700, color: streak.current > 0 ? "#e65100" : "var(--ink)" }}>
-            🔥 {streak.current}
+        <div className="row" style={{ gap: 20 }}>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 28, fontWeight: 700, color: streak.current > 0 ? "#e65100" : "var(--ink)" }}>
+              🔥 {streak.current}
+            </div>
+            <div className="small muted">day streak (best: {streak.longest})</div>
           </div>
-          <div className="small muted">day streak (best: {streak.longest})</div>
-        </div>
-        <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: 28, fontWeight: 700, color: "var(--ink)" }}>{pct(finished, total)}%</div>
-          <div className="small muted">{finished} of {total} topics done</div>
-        </div>
-      </div></div>
+          <div style={{ textAlign: "right" }}>
+            <div style={{ fontSize: 28, fontWeight: 700, color: "var(--ink)" }}>{pct(finished, total)}%</div>
+            <div className="small muted">{finished} of {total} topics done</div>
+          </div>
+        </div></div>
       <div className="row" style={{ marginTop: 10 }}><Bar d={finished} n={total} /></div>
     </div>
     <Msg>{err}</Msg>

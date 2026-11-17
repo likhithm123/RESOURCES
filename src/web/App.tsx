@@ -80,13 +80,20 @@ function AuthPage({ mode }: { mode: "login" | "signup" | "forgot" }) {
         {mode !== "forgot" && <label className="f"><span>Password {mode === "signup" && "(8+ characters, letters and numbers)"}</span>
           <input type="password" value={f.password} onChange={set("password")} required minLength={8} autoComplete={mode === "signup" ? "new-password" : "current-password"} /></label>}
         {mode === "signup" && <label className="f"><span>Which topics & roles are you preparing for? (all selected by default — click to remove any you don't need)</span><RoleChips value={f.roles} onChange={roles => setF({ ...f, roles })} /></label>}
-        <button className="primary" disabled={busy}>{busy ? "Please wait..." : mode === "signup" ? "Send verification code" : mode === "login" ? "Continue" : "Send reset code"}</button>
+        <div style={{ display: "flex", justifyContent: "center", marginTop: 20 }}>
+          <button className={mode === "signup" ? "btn-signup" : "primary"} disabled={busy} style={mode === "signup" ? { minWidth: 240 } : undefined}>
+            {busy ? "Please wait..." : mode === "signup" ? "Send verification code" : mode === "login" ? "Continue" : "Send reset code"}
+          </button>
+        </div>
       </> : <>
         <label className="f"><span>6-digit code from your email</span>
           <input value={f.code} onChange={set("code")} inputMode="numeric" pattern="[0-9]{6}" maxLength={6} required autoFocus autoComplete="one-time-code" style={{ letterSpacing: 6, fontSize: 20 }} /></label>
         <p className="muted small">The code is valid for 10 minutes. <b>Not in your inbox? Check your Spam / Junk folder too</b> and mark the email as "Not spam".</p>
         {purpose === "reset" && <label className="f"><span>New password</span><input type="password" value={f.password} onChange={set("password")} required minLength={8} autoComplete="new-password" /></label>}
-        <div className="row"><button className="primary" disabled={busy}>{busy ? "Checking..." : purpose === "reset" ? "Change password" : "Verify and continue"}</button>
+        <div className="row" style={{ justifyContent: "center", marginTop: 14 }}>
+          <button className={purpose === "verify" ? "btn-signup" : "primary"} disabled={busy} style={purpose === "verify" ? { minWidth: 200 } : undefined}>
+            {busy ? "Checking..." : purpose === "reset" ? "Change password" : "Verify and continue"}
+          </button>
           <button type="button" className="link" onClick={() => { setStep("form"); setInfo(""); }}>Use a different email / resend</button></div>
       </>}
     </form>

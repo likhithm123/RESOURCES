@@ -15,6 +15,8 @@ h1 { font-size: 24px; margin: 0 0 6px; } h2 { font-size: 18px; margin: 0 0 10px;
 button, .btn { font: inherit; border: 1px solid var(--line); background: #fff; color: var(--text); padding: 8px 14px; border-radius: 9px; cursor: pointer; display: inline-block; }
 button:hover, .btn:hover { border-color: #b9c2de; text-decoration: none; } button:disabled { opacity: .55; cursor: default; }
 button.primary, .btn.primary { background: var(--ink); border-color: var(--ink); color: #fff; } button.primary:hover { background: var(--ink2); }
+button.btn-signup, .btn-signup { background: #16a34a; border-color: #15803d; color: #fff; font-weight: 600; padding: 10px 24px; border-radius: 9px; box-shadow: 0 2px 6px rgba(22, 163, 74, 0.25); transition: background .15s, box-shadow .15s; }
+button.btn-signup:hover:not(:disabled), .btn-signup:hover:not(:disabled) { background: #15803d; border-color: #166534; box-shadow: 0 4px 10px rgba(22, 163, 74, 0.35); text-decoration: none; }
 button.danger { color: var(--bad); } button.link { border: 0; background: none; color: var(--ink); padding: 0; }
 button.sm, .btn.sm { padding: 4px 9px; font-size: 13px; border-radius: 7px; }
 input, select, textarea { font: inherit; width: 100%; padding: 9px 11px; border: 1px solid #c9cfe2; border-radius: 9px; background: #fff; color: var(--text); }

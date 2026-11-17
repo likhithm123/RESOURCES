@@ -1,0 +1,16 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "upsc-zero-to-ias",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-10-01",
+  "assets": { "directory": "./public", "binding": "ASSETS", "not_found_handling": "single-page-application", "run_worker_first": ["/api/*"] },
+  "vars": {
+    "IMAGEKIT_PUBLIC_KEY": "public_hepCtAabDD82GztH5MJoL7BNLK0=",
+    "IMAGEKIT_URL": "https://ik.imagekit.io/likhi",
+    "IMAGEKIT_FOLDER": "/upsc"
+  },
+  "d1_databases": [
+    { "binding": "DB", "database_name": "resources", "database_id": "3382b9ae-0c09-43f6-ab69-5a22503314cf" }
+  ]
+  // secrets (wrangler secret put): IMAGEKIT_PRIVATE_KEY, ADMIN_PASSWORD
+}

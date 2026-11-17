@@ -1,9 +1,13 @@
 node_modules
 dist
 .data
+.build
+.wrangler
+.dev.vars
 .env
 .env.*
 !.env.example
 .vercel
 *.log
 .DS_Store
+pdfs/

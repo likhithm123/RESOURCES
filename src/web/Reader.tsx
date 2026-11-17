@@ -112,13 +112,7 @@ export default function Reader() {
     try {
       const bmp = await createImageBitmap(blob);
       canvas.width = bmp.width; canvas.height = bmp.height;
-      const ctx = canvas.getContext("2d")!;
-      ctx.drawImage(bmp, 0, 0); bmp.close();
-      ctx.save();                                               // small, faint signature in the bottom-left corner
-      ctx.font = `${Math.round(canvas.width * 0.024)}px ${SIGN_FONT}`;
-      ctx.fillStyle = "rgba(70, 72, 96, 0.30)";
-      ctx.fillText("likhith", canvas.width * 0.04, canvas.height * 0.988);
-      ctx.restore();
+      canvas.getContext("2d")!.drawImage(bmp, 0, 0); bmp.close();          // the signature is part of every page image
       canvas.parentElement?.classList.add("ready");
       setLoadedPages(s => (s.has(n) ? s : new Set(s).add(n)));
     } catch { delete canvas.dataset.ok; }

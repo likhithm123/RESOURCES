@@ -60,7 +60,7 @@ function AuthPage({ mode }: { mode: "login" | "signup" | "forgot" }) {
     <form onSubmit={submit}>
       {step === "form" ? <>
         {mode === "signup" && <label className="f"><span>Full name</span><input value={f.name} onChange={set("name")} required autoComplete="name" /></label>}
-        {mode === "signup" && <label className="f"><span>Contact number</span><input type="tel" value={f.phone} onChange={set("phone")} autoComplete="tel" placeholder="e.g. 9876543210" /></label>}
+        {mode === "signup" && <label className="f"><span>Contact number</span><input type="tel" value={f.phone} onChange={set("phone")} required autoComplete="tel" placeholder="e.g. 9876543210" /></label>}
         <label className="f"><span>Email</span><input type="email" value={f.email} onChange={set("email")} required autoComplete="email" /></label>
         {mode !== "forgot" && <label className="f"><span>Password {mode === "signup" && "(8+ characters, letters and numbers)"}</span>
           <input type="password" value={f.password} onChange={set("password")} required minLength={8} autoComplete={mode === "signup" ? "new-password" : "current-password"} /></label>}

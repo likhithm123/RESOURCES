@@ -68,6 +68,7 @@ app.post("/auth/signup", async c => {
   const email = cleanEmail(b.email), name = str(b.name, 80), password = checkPassword(b.password);
   if (name.length < 2) fail(400, "Enter your name.");
   const phone = str(b.phone, 15);
+  if (!phone) fail(400, "Enter your contact number.");
   await rateLimit(`signup:${clientIp(c)}`, 10, 3600);
   const existing = await db.first("SELECT id, status FROM rp_users WHERE email = ?", [email]);
   if (existing && existing.status !== "unverified") fail(409, "An account with this email already exists. Please sign in.");

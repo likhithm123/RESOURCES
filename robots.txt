@@ -1,0 +1,21 @@
+# robots.txt for https://resourcescse.vercel.app
+User-agent: *
+Allow: /
+Allow: /library
+Allow: /resources
+Allow: /projects
+Allow: /connect
+Allow: /webteam
+Allow: /login
+Allow: /signup
+Allow: /read/
+Disallow: /admin
+Disallow: /admin/
+Disallow: /api/
+Disallow: /plan
+
+# Host
+Host: resourcescse.vercel.app
+
+# Sitemap
+Sitemap: https://resourcescse.vercel.app/sitemap.xml

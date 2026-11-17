@@ -4,10 +4,11 @@
   "type": "module",
   "scripts": {
     "topics": "node scripts/gen-topics.mjs",
+    "sitemap": "node scripts/gen-sitemap.mjs",
     "api": "node server/dev.js",
     "web": "vite",
-    "dev": "node scripts/gen-topics.mjs && (node server/dev.js & vite)",
-    "build": "node scripts/gen-topics.mjs && vite build",
+    "dev": "node scripts/gen-topics.mjs && node scripts/gen-sitemap.mjs && (node server/dev.js & vite)",
+    "build": "node scripts/gen-topics.mjs && node scripts/gen-sitemap.mjs && vite build",
     "db:migrate": "node server/dev.js --migrate",
     "pdfs:upload": "node scripts/upload-pdfs.mjs"
   },

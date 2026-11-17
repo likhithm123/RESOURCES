@@ -1,0 +1,10 @@
+/* TEAM */
+Developer: Likhith Medarametla
+Contact: liki123456m@gmail.com
+GitHub: https://github.com/likhithm123
+LinkedIn: https://www.linkedin.com/in/likhith-medarametla-0039b6320
+
+/* SITE */
+Last update: 2026/11/17
+Standards: HTML5, CSS3, ES2024, TypeScript, React 19, Vite
+Software: Vite, React, Hono, Cloudflare D1, ImageKit

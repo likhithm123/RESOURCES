@@ -95,14 +95,41 @@ function Plan() {
   </div>;
 }
 
+function WebTeam() {
+  const members = [
+    {
+      name: "Likhith Medarametla",
+      role: "Full Stack Developer",
+      linkedin: "https://www.linkedin.com/in/likhith-medarametla-0039b6320",
+      github: "https://github.com/likhithm123",
+      initial: "L",
+    },
+  ];
+  return <div style={{ maxWidth: 640, margin: "auto" }}>
+    <h1>Brought to you by</h1>
+    <div className="grid">
+      {members.map(m => <div className="card" key={m.name} style={{ marginBottom: 0 }}>
+        <div className="team" style={{ flexDirection: "column", alignItems: "center", gap: 12, padding: "24px 0" }}>
+          <div className="avatar" aria-hidden style={{ width: 56, height: 56, fontSize: 24, lineHeight: "56px" }}>{m.initial}</div>
+          <div style={{ textAlign: "center" }}>
+            <b style={{ fontSize: 18 }}>{m.name}</b>
+            <div className="small muted" style={{ marginTop: 4 }}>{m.role}</div>
+          </div>
+          <div className="row" style={{ gap: 12 }}>
+            <a className="btn sm primary" href={m.linkedin} target="_blank" rel="noopener noreferrer">LinkedIn ↗</a>
+            <a className="btn sm" href={m.github} target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+          </div>
+        </div>
+      </div>)}
+    </div>
+  </div>;
+}
+
 function Footer() {
   return <footer className="footer">
     <div>Built for students preparing for software, AI, data, cloud and security roles.</div>
     <div className="team">
-      <div className="avatar" aria-hidden>L</div>
-      <div style={{ textAlign: "left" }}><b>Likhith Medarametla</b><div className="small muted">Web Team · Full Stack Developer</div></div>
-      <a href="https://www.linkedin.com/in/likhith-medarametla-0039b6320" target="_blank" rel="noopener noreferrer">LinkedIn</a>
-      <a href="https://github.com/likhithm123" target="_blank" rel="noopener noreferrer">GitHub</a>
+      <Link to="/webteam" style={{ fontWeight: 600 }}>WebTeam</Link>
     </div>
   </footer>;
 }
@@ -143,6 +170,7 @@ export default function App() {
         <Route path="/projects" element={guard(<Links kind="project" />)} />
         <Route path="/connect" element={guard(<Connect />)} />
         <Route path="/admin/*" element={guard(user?.role === "admin" ? <Admin /> : <Navigate to="/" replace />)} />
+        <Route path="/webteam" element={<WebTeam />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes></main>} />
     </Routes>

@@ -34,6 +34,7 @@ async function uploadPdf(file: File, folder: string, onProgress: (done: number, 
   pdfjs.GlobalWorkerOptions.workerSrc = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url")).default;
   const pdf = await pdfjs.getDocument({ data: await file.arrayBuffer(), isEvalSupported: false }).promise;
   const canvas = document.createElement("canvas");
+  const texts: { page: number; text: string; boxes: number[][] }[] = [];
   for (let n = 1; n <= pdf.numPages; n++) {
     const page = await pdf.getPage(n);
     const vp = page.getViewport({ scale: 1300 / page.getViewport({ scale: 1 }).width });
@@ -50,9 +51,22 @@ async function uploadPdf(file: File, folder: string, onProgress: (done: number, 
       if (r.ok) break;
       if (attempt >= 3) throw new Error(`Upload of page ${n} failed (${r.status})`);
     }
+    // Words and their positions (0-1000) for in-document search.
+    const tc = await page.getTextContent(); const base = page.getViewport({ scale: 1 }); const words: string[] = []; const boxes: number[][] = [];
+    for (const it of tc.items as any[]) {
+      const str = String(it.str || ""); if (!str.trim()) continue;
+      const [x, y] = [it.transform[4], it.transform[5]], h = Math.abs(it.transform[3]) || 10, w = it.width || 0;
+      let cx = 0;
+      for (const part of str.split(/(\s+)/)) {                 // split runs into words, width shared by character count
+        const pw = (part.length / str.length) * w;
+        if (part.trim()) { words.push(part); boxes.push([x + cx, base.height - y - h, x + cx + pw, base.height - y].map((v, i) => Math.round((v / (i % 2 ? base.height : base.width)) * 1000))); }
+        cx += pw;
+      }
+    }
+    texts.push({ page: n, text: words.join(" "), boxes });
     onProgress(n, pdf.numPages);
   }
-  return pdf.numPages;
+  return { pages: pdf.numPages, texts };
 }
 
 function Documents() {
@@ -67,8 +81,10 @@ function Documents() {
     try {
       setBusy("Preparing...");
       const p = await api("/admin/docs/prepare", "POST", { slug: f.slug });
-      const pages = await uploadPdf(file, p.folder, (d, t) => setBusy(`Uploading page ${d} of ${t}...`));
+      const { pages, texts } = await uploadPdf(file, p.folder, (d, t) => setBusy(`Uploading page ${d} of ${t}...`));
       await api("/admin/docs", "POST", { ...f, slug: p.slug, version: p.version, folder: p.folder, pages });
+      setBusy("Indexing text for search...");
+      for (let i = 0; i < texts.length; i += 10) await api(`/admin/docs/${p.slug}/text`, "POST", { reset: i === 0, pages: texts.slice(i, i + 10) });
       setOk(`Saved "${f.title}" (${pages} pages).`); setFile(null); load();
     } catch (x: any) { setErr(x.message); } finally { setBusy(""); }
   }

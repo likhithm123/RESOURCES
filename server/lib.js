@@ -161,11 +161,12 @@ export function ikSignedUrl(filePath, transform, ttl = 120) {
   return url.toString();
 }
 /** Fetches one page image with the viewer's identity burnt in as a faint diagonal watermark. */
-export async function ikPage(folder, page, watermark) {
+export async function ikPage(folder, page, watermark, width = 1100) {
   const wm = Buffer.from(watermark).toString("base64").replace(/=+$/, "");
-  const tr = `l-text,ie-${encodeURIComponent(wm)},fs-24,co-1B3FAE,al-18,rt-N30,lfo-center,l-end`;
+  const size = `w-${width},f-webp,q-78`;                                   // WebP sized to the screen: ~4x smaller than JPEG
+  const tr = `${size}:l-text,ie-${encodeURIComponent(wm)},fs-${Math.round(width / 46)},co-1B3FAE,al-2,rt-N30,lfo-center,l-end`;
   let res = await fetch(ikSignedUrl(`${folder}/${pageName(page)}`, tr));
-  if (!res.ok) res = await fetch(ikSignedUrl(`${folder}/${pageName(page)}`, ""));
+  if (!res.ok) res = await fetch(ikSignedUrl(`${folder}/${pageName(page)}`, size));
   if (!res.ok) fail(res.status === 404 ? 404 : 502, "Could not load this page.");
   return Buffer.from(await res.arrayBuffer());
 }

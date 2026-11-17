@@ -36,6 +36,7 @@ app.use("*", async (c, next) => {
 
 // Session loader.
 app.use("*", async (c, next) => {
+  if (c.req.path.startsWith("/api/view/")) { c.set("user", null); return next(); }    // verified by the view token instead
   const token = getCookie(c, COOKIE);
   let user = null;
   if (token) {
@@ -186,27 +187,64 @@ app.post("/docs/:slug/open", async c => {
   const u = auth(c);
   const d = await db.first("SELECT * FROM rp_documents WHERE slug = ? AND (published = 1 OR ? = 'admin')", [c.req.param("slug"), u.role]);
   if (!d) fail(404, "Document not found.");
-  const token = signView({ u: u.id, d: d.id, x: Math.floor(Date.now() / 1000) + 1800 });
+  const token = signView({ u: u.id, e: u.email, d: d.id, f: d.ik_folder, n: d.pages, s: sha256(getCookie(c, COOKIE) || "").slice(0, 16), x: Math.floor(Date.now() / 1000) + 3600 });
   await audit(c, "doc.open", d.slug);
-  return c.json({ token, key: viewKey(token).toString("base64"), pages: d.pages, title: d.title, slug: d.slug });
+  const searchable = !!(await db.first("SELECT 1 AS y FROM rp_doc_pages WHERE doc_id = ? LIMIT 1", [d.id]));
+  return c.json({ token, key: viewKey(token).toString("base64"), pages: d.pages, title: d.title, slug: d.slug, searchable });
 });
-// One page, as AES-256-GCM ciphertext (iv | ciphertext | tag). The original PDF is never stored or served.
-app.get("/view/:token/:page", async c => {
-  const u = auth(c);
+// Pages as AES-256-GCM ciphertext. GET /view/<token>/<first>-<last>?w=<width>  (max 4 pages per call).
+// Response = for each page: 4-byte big-endian length + (iv | ciphertext | tag). The original PDF is never stored or served.
+// No database work per request: the signed token carries the user, document folder and page count, and is bound to the session cookie.
+const pageLimiter = new Map();                                 // per-instance throttle: pages per user per 10 minutes
+app.get("/view/:token/:range", async c => {
   const token = c.req.param("token"); const [p, sig] = token.split(".");
   if (!p || !sig || !safeEqual(sig, hmacHex("sha256", secret(), "view:" + p))) fail(403, "Invalid view.");
   const v = parse(Buffer.from(p, "base64url").toString(), {});
-  if (v.u !== u.id || v.x < Math.floor(Date.now() / 1000)) fail(403, "This view has expired. Reopen the document.");
-  if (c.req.header("sec-fetch-dest") && c.req.header("sec-fetch-dest") !== "empty") fail(403, "Not allowed.");
-  await rateLimit(`pages:${u.id}`, 400, 600);
-  const d = await db.first("SELECT ik_folder, pages FROM rp_documents WHERE id = ?", [v.d]);
-  const page = Number(c.req.param("page"));
-  if (!d || !Number.isInteger(page) || page < 1 || page > d.pages) fail(404, "Page not found.");
-  const img = await ikPage(d.ik_folder, page, `${u.email}  ${new Date().toISOString().slice(0, 10)}`);
-  const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv("aes-256-gcm", viewKey(token), iv);
-  const out = Buffer.concat([iv, cipher.update(img), cipher.final(), cipher.getAuthTag()]);
-  return new Response(out, { headers: { "Content-Type": "application/octet-stream", "Cache-Control": "no-store, private", "Content-Disposition": "inline", "X-Content-Type-Options": "nosniff" } });
+  if (!v.u || v.x < Math.floor(Date.now() / 1000)) fail(403, "This view has expired. Reopen the document.");
+  if (v.s !== sha256(getCookie(c, COOKIE) || "").slice(0, 16)) fail(401, "Please sign in again.");
+  const dest = c.req.header("sec-fetch-dest"); if (dest && dest !== "empty") fail(403, "Not allowed.");
+  const [a1, b1] = c.req.param("range").split("-").map(Number); const first = a1, last = b1 || a1;
+  if (!Number.isInteger(first) || !Number.isInteger(last) || first < 1 || last < first || last > v.n || last - first > 3) fail(400, "Bad page range.");
+  const now = Date.now(), rec = pageLimiter.get(v.u) || { n: 0, reset: now + 600_000 };
+  if (rec.reset < now) { rec.n = 0; rec.reset = now + 600_000; }
+  rec.n += last - first + 1; pageLimiter.set(v.u, rec);
+  if (rec.n > 2500) fail(429, "Too many pages requested. Please wait a few minutes.");
+  const width = [700, 900, 1100, 1300].find(x => x >= Number(c.req.query("w") || 1100)) || 1300;
+  const wm = `${v.e}  ${new Date().toISOString().slice(0, 10)}`;
+  const imgs = await Promise.all(Array.from({ length: last - first + 1 }, (_, i) => ikPage(v.f, first + i, wm, width)));
+  const key = viewKey(token);
+  const parts = imgs.flatMap(img => {
+    const iv = crypto.randomBytes(12); const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
+    const body = Buffer.concat([iv, cipher.update(img), cipher.final(), cipher.getAuthTag()]);
+    const len = Buffer.alloc(4); len.writeUInt32BE(body.length); return [len, body];
+  });
+  return new Response(Buffer.concat(parts), { headers: { "Content-Type": "application/octet-stream", "Cache-Control": "no-store, private", "Content-Disposition": "inline", "X-Content-Type-Options": "nosniff" } });
+});
+
+// Search inside a document: returns page numbers, a short snippet and highlight boxes (0-1000 page coordinates).
+// The full text is never sent to the browser.
+app.get("/docs/:slug/search", async c => {
+  const u = auth(c);
+  await rateLimit(`search:${u.id}`, 120, 300);
+  const q = str(c.req.query("q"), 60).toLowerCase();
+  if (q.length < 1) return c.json({ results: [] });
+  const d = await db.first("SELECT id FROM rp_documents WHERE slug = ? AND (published = 1 OR ? = 'admin')", [c.req.param("slug"), u.role]);
+  if (!d) fail(404, "Document not found.");
+  const like = "%" + q.replace(/[\\%_]/g, ch => "\\" + ch) + "%";
+  const rows = await db.all("SELECT page, text, boxes FROM rp_doc_pages WHERE doc_id = ? AND lower(text) LIKE ? ESCAPE '\\' ORDER BY page LIMIT 60", [d.id, like]);
+  const results = rows.map(r => {
+    const text = r.text, low = text.toLowerCase(), boxes = parse(r.boxes, []);
+    const starts = []; for (let i = 0; i < text.length; i++) if (text[i] === " " || i === 0) starts.push(i === 0 ? 0 : i + 1);
+    const wordAt = pos => { let lo = 0, hi = starts.length - 1; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (starts[m] <= pos) lo = m; else hi = m - 1; } return lo; };
+    const rects = []; let first = -1, count = 0;
+    for (let i = low.indexOf(q); i !== -1 && count < 40; i = low.indexOf(q, i + Math.max(1, q.length)), count++) {
+      if (first < 0) first = i;
+      for (let w = wordAt(i); w <= wordAt(i + q.length - 1); w++) if (boxes[w]) rects.push(boxes[w]);
+    }
+    const snippet = (first > 30 ? "..." : "") + text.slice(Math.max(0, first - 30), first + q.length + 50) + "...";
+    return { page: r.page, count, snippet, rects };
+  });
+  return c.json({ results });
 });
 
 /* ---------------- Resources / projects (links) ---------------- */
@@ -300,6 +338,18 @@ app.post("/admin/docs/prepare", async c => {
   const version = (old?.version || 0) + 1;
   return c.json({ slug, version, folder: `${ikFolder()}/docs/${slug}-v${version}` });
 });
+// Searchable text of a document, sent by the admin's browser in chunks of up to 10 pages.
+app.post("/admin/docs/:slug/text", async c => {
+  admin(c); const b = await body(c);
+  const d = await db.first("SELECT id, pages FROM rp_documents WHERE slug = ?", [c.req.param("slug")]); if (!d) fail(404, "Not found.");
+  if (b.reset) await db.run("DELETE FROM rp_doc_pages WHERE doc_id = ?", [d.id]);
+  for (const p of (Array.isArray(b.pages) ? b.pages : []).slice(0, 10)) {
+    const page = Number(p.page); if (!Number.isInteger(page) || page < 1 || page > d.pages) continue;
+    const boxes = (Array.isArray(p.boxes) ? p.boxes : []).slice(0, 5000).map(r => (Array.isArray(r) ? r.slice(0, 4).map(v => Math.max(0, Math.min(1000, Math.round(Number(v) || 0)))) : [0, 0, 0, 0]));
+    await db.run("INSERT OR REPLACE INTO rp_doc_pages (doc_id, page, text, boxes) VALUES (?, ?, ?, ?)", [d.id, page, str(p.text, 40000), JSON.stringify(boxes)]);
+  }
+  return c.json({ ok: true });
+});
 app.post("/admin/docs", async c => {
   admin(c); const b = await body(c);
   const slug = str(b.slug, 80), title = str(b.title, 160), pages = Math.round(Number(b.pages)), folder = str(b.folder, 300), version = Math.round(Number(b.version)) || 1;
@@ -325,7 +375,7 @@ app.put("/admin/docs/:id", async c => {
 });
 app.delete("/admin/docs/:id", async c => {
   admin(c); const d = await db.first("SELECT * FROM rp_documents WHERE id = ?", [Number(c.req.param("id"))]); if (!d) fail(404, "Not found.");
-  await db.run("DELETE FROM rp_documents WHERE id = ?", [d.id]); await ikDeleteFolder(d.ik_folder); await audit(c, "doc.delete", d.slug);
+  await db.run("DELETE FROM rp_documents WHERE id = ?", [d.id]); await db.run("DELETE FROM rp_doc_pages WHERE doc_id = ?", [d.id]); await ikDeleteFolder(d.ik_folder); await audit(c, "doc.delete", d.slug);
   return c.json({ ok: true });
 });
 

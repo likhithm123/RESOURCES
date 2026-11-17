@@ -155,3 +155,15 @@ Built for students and professionals preparing for software engineering, AI, dat
 - **Developer:** [Likhith Medarametla](https://github.com/likhithm123)
 - **LinkedIn:** [likhith-medarametla](https://www.linkedin.com/in/likhith-medarametla-0039b6320)
 - **Email:** liki123456m@gmail.com
+
+## Reader performance and search
+- Pages are fetched 4 at a time as WebP sized to the screen (about 50-100 KB a page). The page you open and its
+  neighbours load first; the rest of the notebook is prefetched in the background (phones keep a 40-page window),
+  so scrolling and jumping are instant. Only canvases near the screen hold decoded pixels.
+- Page requests need no database calls: the signed view token carries the document and is bound to the session cookie.
+- In-document search (Ctrl/Cmd+F or the search button) finds words or characters, lists matching pages with snippets
+  and highlights matches. Only page numbers, snippets and boxes are sent; the full text never leaves the server.
+- Publishing with `pnpm pdfs:upload` (or Admin -> Documents) also stores the search text. Re-index only:
+  `node scripts/index-text.mjs [filter]`.
+- Signature font: put a licensed `cochocib-script-latin-pro.woff2` in `public/fonts/` to use it; otherwise the open-licence
+  "Monsieur La Doulaise" script is used.

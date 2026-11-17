@@ -11,6 +11,7 @@ for (const line of fs.existsSync(".env.local") ? fs.readFileSync(".env.local", "
 }
 const { db, usingD1 } = await import("../server/db.js");
 const { ikFolder, ikDeleteFolder } = await import("../server/lib.js");
+const { indexText } = await import("./index-text.mjs");
 const { NOTEBOOKS } = await import("../src/shared/catalog.ts").catch(async () => {
   // plain node cannot import .ts on old versions: read the slugs with a regex instead
   const src = fs.readFileSync("src/shared/catalog.ts", "utf8");
@@ -46,7 +47,7 @@ for (const f of files) {
   const pages = Number(execFileSync("python3", ["scripts/render_pages.py", path.join(pdfDir, f), tmp]).toString().trim());
   const imgs = fs.readdirSync(tmp).sort().map(x => path.join(tmp, x));
   let next = 0, done = 0;
-  await Promise.all(Array.from({ length: 6 }, async () => { while (next < imgs.length) { await upload(imgs[next++], folder); process.stdout.write(`\r${slug}: ${++done}/${pages} pages`); } }));
+  await Promise.all(Array.from({ length: 6 }, async () => { while (next < imgs.length) { await upload(imgs[next++], folder); ++done; } }));
   const title = nb?.title || slug, roles = JSON.stringify(nb?.roles || []), order = nb ? NOTEBOOKS.indexOf(nb) + 1 : 99;
   if (old) {
     await db.run("UPDATE rp_documents SET title = ?, career_roles = ?, ik_folder = ?, pages = ?, version = ?, sort_order = ?, updated_at = datetime('now') WHERE id = ?", [title, roles, folder, pages, version, order, old.id]);
@@ -54,4 +55,5 @@ for (const f of files) {
   } else await db.run("INSERT INTO rp_documents (slug, title, career_roles, ik_folder, pages, version, sort_order) VALUES (?,?,?,?,?,?,?)", [slug, title, roles, folder, pages, version, order]);
   fs.rmSync(tmp, { recursive: true, force: true });
   console.log(" ✓");
+  await indexText(slug, path.join(pdfDir, f));
 }

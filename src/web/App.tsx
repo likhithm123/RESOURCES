@@ -36,7 +36,11 @@ function AuthPage({ mode }: { mode: "login" | "signup" | "forgot" }) {
     try {
       if (step === "form") {
         if (mode === "signup") { await api("/auth/signup", "POST", { name: f.name, email: f.email, password: f.password, career_roles: f.roles }); setPurpose("verify"); }
-        else if (mode === "login") { const r = await api("/auth/login", "POST", { email: f.email, password: f.password }); setPurpose(r.purpose); }
+        else if (mode === "login") {
+          const r = await api("/auth/login", "POST", { email: f.email, password: f.password });
+          if (r.user) { setUser(r.user); nav(r.user.career_roles.length ? "/" : "/plan"); return; }
+          setPurpose(r.purpose);                         // account not verified yet: a code was emailed
+        }
         else { await api("/auth/forgot", "POST", { email: f.email }); setPurpose("reset"); }
         setStep("code"); setInfo(`We sent a 6-digit code to ${f.email}.`);
       } else if (purpose === "reset") {

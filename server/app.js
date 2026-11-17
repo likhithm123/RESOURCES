@@ -88,7 +88,7 @@ app.post("/auth/verify", async c => {
   await startSession(c, u.id);
   return c.json({ ok: true, user: pub({ ...u, role }) });
 });
-// Sign-in step 1: password. Step 2: emailed code.
+// Sign-in with email + password. Unverified accounts are sent a verification code first.
 app.post("/auth/login", async c => {
   const b = await body(c); const email = cleanEmail(b.email);
   await rateLimit(`login:${email}`, 8, 900); await rateLimit(`login-ip:${clientIp(c)}`, 40, 900);
@@ -96,8 +96,9 @@ app.post("/auth/login", async c => {
   if (!u || !verifyPassword(String(b.password || ""), u.pass_hash)) fail(401, "Email or password is incorrect.");
   if (u.status === "blocked") fail(403, "This account has been blocked. Contact the admin.");
   if (u.status === "unverified") { await issueOtp(email, "verify"); return c.json({ ok: true, otp: true, purpose: "verify" }); }
-  await issueOtp(email, "login");
-  return c.json({ ok: true, otp: true, purpose: "login" });
+  if (adminEmails().includes(email) && u.role !== "admin") { await db.run("UPDATE rp_users SET role = 'admin' WHERE id = ?", [u.id]); u.role = "admin"; }
+  await startSession(c, u.id);                        // password is enough; codes are only for sign-up and reset
+  return c.json({ ok: true, user: pub(u) });
 });
 app.post("/auth/login/verify", async c => {
   const b = await body(c); const email = cleanEmail(b.email);

@@ -58,6 +58,7 @@ async function startSession(c, userId) {
   await db.run("INSERT INTO rp_sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)", [sha256(token), userId, exp]);
   await db.run("UPDATE rp_users SET last_login_at = datetime('now') WHERE id = ?", [userId]);
   await db.run("DELETE FROM rp_sessions WHERE expires_at < ?", [Math.floor(Date.now() / 1000)]);
+  await db.run("INSERT INTO rp_audit (user_id, action, detail, ip) VALUES (?, ?, ?, ?)", [userId, "auth.login", "User signed in", clientIp(c)]);
   setCookie(c, COOKIE, token, { httpOnly: true, secure: prod(), sameSite: "Strict", path: "/", maxAge: SESSION_DAYS * 86400 });
 }
 
@@ -114,7 +115,13 @@ app.post("/auth/login/verify", async c => {
 });
 app.post("/auth/logout", async c => {
   const token = getCookie(c, COOKIE);
-  if (token) await db.run("DELETE FROM rp_sessions WHERE token_hash = ?", [sha256(token)]);
+  if (token) {
+    const s = await db.first("SELECT user_id FROM rp_sessions WHERE token_hash = ?", [sha256(token)]);
+    if (s?.user_id) {
+      await db.run("INSERT INTO rp_audit (user_id, action, detail, ip) VALUES (?, ?, ?, ?)", [s.user_id, "auth.logout", "User signed out", clientIp(c)]);
+    }
+    await db.run("DELETE FROM rp_sessions WHERE token_hash = ?", [sha256(token)]);
+  }
   deleteCookie(c, COOKIE, { path: "/" });
   return c.json({ ok: true });
 });
@@ -245,7 +252,8 @@ app.get("/admin/users/:id/detail", async c => {
   const u = await db.first("SELECT id, name, email, role, status, career_roles, plan, phone, created_at, last_login_at FROM rp_users WHERE id = ?", [id]);
   if (!u) fail(404, "User not found.");
   const progress = await db.all("SELECT item_id FROM rp_progress WHERE user_id = ?", [id]);
-  return c.json({ user: { ...u, career_roles: parse(u.career_roles, []), plan: parse(u.plan, []) }, progress: progress.map(r => r.item_id) });
+  const logins = await db.all("SELECT id, action, detail, ip, created_at FROM rp_audit WHERE user_id = ? AND action IN ('auth.login', 'auth.logout') ORDER BY id DESC LIMIT 20", [id]);
+  return c.json({ user: { ...u, career_roles: parse(u.career_roles, []), plan: parse(u.plan, []) }, progress: progress.map(r => r.item_id), logins });
 });
 app.post("/admin/users/:id", async c => {
   const me = admin(c), b = await body(c), id = Number(c.req.param("id"));
@@ -319,7 +327,18 @@ app.post("/admin/connect/:id", async c => {
   } else fail(400, "Unknown action.");
   return c.json({ ok: true });
 });
-app.get("/admin/audit", async c => { admin(c); return c.json({ rows: await db.all("SELECT a.*, u.email FROM rp_audit a LEFT JOIN rp_users u ON u.id = a.user_id ORDER BY a.id DESC LIMIT 300") }); });
+app.get("/admin/audit", async c => {
+  admin(c);
+  return c.json({
+    rows: await db.all(`
+      SELECT a.*, u.name AS user_name, u.email
+      FROM rp_audit a
+      LEFT JOIN rp_users u ON u.id = a.user_id
+      ORDER BY a.id DESC
+      LIMIT 300
+    `)
+  });
+});
 
 /* ---------------- Team members (public list + admin CMS) ---------------- */
 app.get("/team", async c => {

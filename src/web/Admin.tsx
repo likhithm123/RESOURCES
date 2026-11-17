@@ -4,14 +4,14 @@ import { api, type Doc } from "./api";
 import { Msg, RoleChips } from "./App";
 import { NOTEBOOKS, roleLabel } from "../shared/catalog";
 
-const TABS = ["Overview", "Documents", "Resources & Projects", "Connect", "Users", "Team"] as const;
+const TABS = ["Overview", "Documents", "Resources & Projects", "Connect", "Users", "Team", "Audit Logs"] as const;
 
 export default function Admin() {
   const [tab, setTab] = useState<(typeof TABS)[number]>("Overview");
   return <>
     <h1>Admin</h1>
     <div className="chips" style={{ margin: "10px 0 16px" }}>{TABS.map(t => <span key={t} className={`chip ${tab === t ? "on" : ""}`} onClick={() => setTab(t)}>{t}</span>)}</div>
-    {tab === "Overview" && <Overview />}{tab === "Documents" && <Documents />}{tab === "Resources & Projects" && <LinksAdmin />}{tab === "Connect" && <ConnectAdmin />}{tab === "Users" && <Users />}{tab === "Team" && <TeamAdmin />}
+    {tab === "Overview" && <Overview />}{tab === "Documents" && <Documents />}{tab === "Resources & Projects" && <LinksAdmin />}{tab === "Connect" && <ConnectAdmin />}{tab === "Users" && <Users />}{tab === "Team" && <TeamAdmin />}{tab === "Audit Logs" && <AuditLogsAdmin />}
   </>;
 }
 
@@ -146,6 +146,7 @@ function ConnectAdmin() {
 function Users() {
   const [users, setUsers] = useState<any[]>([]); const [err, setErr] = useState(""); const [q, setQ] = useState("");
   const [detail, setDetail] = useState<any>(null); const [progress, setProgress] = useState<string[]>([]);
+  const [logins, setLogins] = useState<any[]>([]);
   const load = () => api("/admin/users").then(r => setUsers(r.users)).catch(e => setErr(e.message));
   useEffect(() => { load(); }, []);
   const act = async (id: number, b: any) => { setErr(""); await api(`/admin/users/${id}`, "POST", b).catch(e => setErr(e.message)); load(); };
@@ -153,7 +154,7 @@ function Users() {
   async function viewUser(id: number) {
     try {
       const r = await api(`/admin/users/${id}/detail`);
-      setDetail(r.user); setProgress(r.progress);
+      setDetail(r.user); setProgress(r.progress); setLogins(r.logins || []);
     } catch (e: any) { setErr(e.message); }
   }
   return <>
@@ -172,6 +173,19 @@ function Users() {
         <div className="chips" style={{ marginTop: 4 }}>{(detail.career_roles || []).map((r: string) => <span className="chip on" key={r}>{roleLabel(r)}</span>)}{!(detail.career_roles || []).length && <span className="muted small">None selected</span>}</div>
       </div>
       <div style={{ marginTop: 12 }}><span className="muted small">Progress:</span> <b>{progress.length}</b> topics completed</div>
+      {!!logins.length && <div style={{ marginTop: 16 }}>
+        <h3>Recent sign-in history</h3>
+        <table>
+          <thead><tr><th>Event</th><th>IP</th><th>Time</th></tr></thead>
+          <tbody>
+            {logins.map((l: any) => <tr key={l.id}>
+              <td><span className={`tag ${l.action === "auth.login" ? "primary" : ""}`}>{l.action === "auth.login" ? "Sign in" : "Sign out"}</span></td>
+              <td className="small">{l.ip || "—"}</td>
+              <td className="small">{l.created_at}</td>
+            </tr>)}
+          </tbody>
+        </table>
+      </div>}
     </div>}
     <div className="card"><table><thead><tr><th>User</th><th>Phone</th><th>Status</th><th>Role</th><th>Last sign-in</th><th /></tr></thead><tbody>
       {shown.map(u => <tr key={u.id}><td><b style={{ cursor: "pointer", textDecoration: "underline" }} onClick={() => viewUser(u.id)}>{u.name}</b><div className="small muted">{u.email}</div></td><td className="small">{u.phone || "—"}</td><td><span className="tag">{u.status}</span></td><td>{u.role}</td><td className="small">{u.last_login_at || "-"}</td>
@@ -222,5 +236,77 @@ function TeamAdmin() {
           <button className="sm danger" onClick={async () => { if (confirm(`Remove ${m.name}?`)) { await api(`/admin/team/${m.id}`, "DELETE"); load(); } }}>Delete</button>
         </div></td></tr>)}
     </tbody></table></div>
+  </>;
+}
+
+function AuditLogsAdmin() {
+  const [logs, setLogs] = useState<any[]>([]);
+  const [err, setErr] = useState("");
+  const [q, setQ] = useState("");
+  const [actionFilter, setActionFilter] = useState("");
+
+  const load = () => api("/admin/audit").then(r => setLogs(r.rows)).catch(e => setErr(e.message));
+  useEffect(() => { load(); }, []);
+
+  const actions = [...new Set(logs.map(l => l.action))];
+  const needle = q.toLowerCase();
+  const shown = logs.filter(l => {
+    if (actionFilter && l.action !== actionFilter) return false;
+    if (!needle) return true;
+    return [l.action, l.detail, l.email, l.user_name, l.ip].join(" ").toLowerCase().includes(needle);
+  });
+
+  return <>
+    <Msg>{err}</Msg>
+    <div className="row" style={{ marginBottom: 12 }}>
+      <input
+        placeholder="Filter logs by user, action, IP, or details"
+        value={q}
+        onChange={e => setQ(e.target.value)}
+        style={{ flex: 1, minWidth: 240 }}
+      />
+      <select value={actionFilter} onChange={e => setActionFilter(e.target.value)} style={{ width: 180 }}>
+        <option value="">All actions ({logs.length})</option>
+        {actions.map(a => <option key={a} value={a}>{a}</option>)}
+      </select>
+      <button className="sm" onClick={load}>Refresh</button>
+    </div>
+    <div className="card">
+      <h2>Audit Logs & Sign-in History ({shown.length})</h2>
+      {!shown.length && <p className="muted small">No logs matching criteria.</p>}
+      {!!shown.length && <table>
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>User</th>
+            <th>Action</th>
+            <th>Detail</th>
+            <th>IP</th>
+          </tr>
+        </thead>
+        <tbody>
+          {shown.map((l: any) => (
+            <tr key={l.id}>
+              <td className="small" style={{ whiteSpace: "nowrap" }}>{l.created_at}</td>
+              <td>
+                {l.email ? (
+                  <>
+                    <b>{l.user_name || l.email.split("@")[0]}</b>
+                    <div className="small muted">{l.email}</div>
+                  </>
+                ) : <span className="muted small">Anonymous / System</span>}
+              </td>
+              <td>
+                <span className={`tag ${l.action.startsWith("auth.") ? "primary" : l.action.startsWith("user.") ? "err" : ""}`}>
+                  {l.action}
+                </span>
+              </td>
+              <td className="small" style={{ maxWidth: 300, wordBreak: "break-word" }}>{l.detail || "—"}</td>
+              <td className="small">{l.ip || "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>}
+    </div>
   </>;
 }

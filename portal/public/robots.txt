@@ -1,4 +1,4 @@
-# robots.txt for https://upsc-res.vercel.app
+# robots.txt for https://resourcescse.vercel.app
 User-agent: *
 Allow: /
 Allow: /library
@@ -15,7 +15,7 @@ Disallow: /api/
 Disallow: /plan
 
 # Host
-Host: upsc-res.vercel.app
+Host: resourcescse.vercel.app
 
 # Sitemap
-Sitemap: https://upsc-res.vercel.app/sitemap.xml
+Sitemap: https://resourcescse.vercel.app/sitemap.xml

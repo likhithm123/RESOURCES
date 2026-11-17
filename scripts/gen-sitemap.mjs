@@ -8,7 +8,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const publicDir = join(here, "..", "public");
 const fallbackPublicDir = join(here, "..", "portal", "public");
 
-const SITE_URL = (process.env.SITE_URL || "https://upsc-res.vercel.app").replace(/\/+$/, "");
+const SITE_URL = (process.env.SITE_URL || "https://resourcescse.vercel.app").replace(/\/+$/, "");
 const host = new URL(SITE_URL).host;
 const today = new Date().toISOString().slice(0, 10);
 

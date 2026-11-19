@@ -161,7 +161,8 @@ export default function Reader() {
     const timer = setTimeout(async () => {
       if (markedPages.current.has(cur)) return;
       markedPages.current.add(cur);
-      const nb = TOPICS[slug];
+      const baseSlug = slug.replace(/-(master|long)$/, "");
+      const nb = TOPICS[baseSlug] || TOPICS[slug];
       const items: string[] = [];
       if (nb) for (const s of nb.sections || []) for (const it of s.items || []) if ((it.page || s.page) === cur) items.push(it.id);
       const explicitItem = cur === start ? sp.get("item") : null;
@@ -169,7 +170,7 @@ export default function Reader() {
       if (toMark.length > 0) {
         try {
           await api("/progress", "POST", { items: toMark, done: true });
-          setStatusMsg(`✓ Page ${cur} marked as done`);
+          setStatusMsg(`Page ${cur} marked as done`);
           setTimeout(() => setStatusMsg(""), 3500);
         } catch {}
       }
@@ -230,17 +231,17 @@ export default function Reader() {
     : `https://ik.imagekit.io/likhi/resources-portal/pdfs/${slug}.pdf`;
   return <>
     <div className="reader-bar">
-      <Link to="/" className="btn sm" aria-label="Back to track sheet">←<span className="hide-sm"> Track sheet</span></Link>
+      <Link to="/" className="btn sm" aria-label="Back to track sheet">Track sheet</Link>
       <b className="reader-title">{meta?.title || "Opening..."}</b>
       {statusMsg && <span className="reader-pill">{statusMsg}</span>}
       {meta && <>
-        <button className="sm" onClick={() => go(cur - 1)} aria-label="Previous page">‹</button>
+        <button className="sm" onClick={() => go(cur - 1)} aria-label="Previous page">Prev</button>
         <label className="row small nowrap"><span className="hide-sm">Page</span> <input className="page-input" type="number" min={1} max={meta.pages} value={cur} onChange={e => { const n = Number(e.target.value); if (n >= 1 && n <= meta.pages) go(n); }} aria-label="Go to page" /> / {meta.pages}</label>
-        <button className="sm" onClick={() => go(cur + 1)} aria-label="Next page">›</button>
+        <button className="sm" onClick={() => go(cur + 1)} aria-label="Next page">Next</button>
         <button className="sm hide-sm" onClick={() => setZoom(z => Math.max(0.6, +(z - 0.15).toFixed(2)))} aria-label="Zoom out">−</button>
         <button className="sm hide-sm" onClick={() => setZoom(z => Math.min(2, +(z + 0.15).toFixed(2)))} aria-label="Zoom in">+</button>
-        <button className={`sm ${showSearch ? "primary" : ""}`} onClick={() => { setShowSearch(s => !s); setTimeout(() => document.getElementById("doc-search")?.focus(), 30); }} aria-label="Search in document">🔍<span className="hide-sm"> Search</span></button>
-        <a className="btn sm hide-sm" href={pdfUrl} target="_blank" rel="noopener noreferrer" title="Direct PDF via ImageKit">📥 PDF</a>
+        <button className={`sm ${showSearch ? "primary" : ""}`} onClick={() => { setShowSearch(s => !s); setTimeout(() => document.getElementById("doc-search")?.focus(), 30); }} aria-label="Search in document"><span className="hide-sm">Search</span></button>
+        <a className="btn sm hide-sm" href={pdfUrl} target="_blank" rel="noopener noreferrer" title="Direct PDF">PDF</a>
         {pct < 100 && <span className="small muted hide-sm" title="Pages ready for instant scrolling">{pct}% loaded</span>}
       </>}
     </div>
@@ -249,9 +250,9 @@ export default function Reader() {
         <input id="doc-search" placeholder={meta.searchable ? "Search a word or characters..." : "Search is not available for this document yet"} disabled={!meta.searchable}
           value={q} onChange={e => setQ(e.target.value)} onKeyDown={e => { if (e.key === "Enter") stepHit(e.shiftKey ? -1 : 1); if (e.key === "Escape") setShowSearch(false); }} aria-label="Search text" />
         <span className="small muted nowrap">{searching ? "Searching..." : q.trim() ? `${total} match${total === 1 ? "" : "es"} on ${hits.length} page${hits.length === 1 ? "" : "s"}` : ""}</span>
-        <button className="sm" onClick={() => stepHit(-1)} disabled={!hits.length} aria-label="Previous match">▲</button>
-        <button className="sm" onClick={() => stepHit(1)} disabled={!hits.length} aria-label="Next match">▼</button>
-        <button className="sm" onClick={() => { setShowSearch(false); setQ(""); setHits([]); }} aria-label="Close search">✕</button>
+        <button className="sm" onClick={() => stepHit(-1)} disabled={!hits.length} aria-label="Previous match">Up</button>
+        <button className="sm" onClick={() => stepHit(1)} disabled={!hits.length} aria-label="Next match">Down</button>
+        <button className="sm" onClick={() => { setShowSearch(false); setQ(""); setHits([]); }} aria-label="Close search">Close</button>
       </div>
       {!!hits.length && <div className="hits">{hits.map((h, i) =>
         <button key={h.page} className={`hit ${i === hitIdx ? "on" : ""}`} onClick={() => { setHitIdx(i); goHit(h); }}>

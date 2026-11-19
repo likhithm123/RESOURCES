@@ -206,7 +206,7 @@ function Users() {
         <div className="card" style={{ flex: 1, margin: 0, padding: 12 }}>
           <div className="muted small">Current Streak</div>
           <div style={{ fontSize: 20, fontWeight: 700, color: (userStreak?.current || 0) > 0 ? "#e65100" : "inherit" }}>
-            🔥 {userStreak?.current || 0} <span style={{ fontSize: 13, fontWeight: "normal" }} className="muted">days</span>
+            {userStreak?.current || 0} <span style={{ fontSize: 13, fontWeight: "normal" }} className="muted">days</span>
           </div>
         </div>
         <div className="card" style={{ flex: 1, margin: 0, padding: 12 }}>
@@ -240,7 +240,7 @@ function Users() {
         <td className="small">{u.phone || "—"}</td>
         <td>
           <span className="tag" style={{ color: (u.streak?.current || 0) > 0 ? "#e65100" : "inherit", fontWeight: 600 }}>
-            🔥 {u.streak?.current || 0}d
+            {u.streak?.current || 0}d
           </span>
           <div className="small muted">best: {u.streak?.longest || 0}d</div>
         </td>

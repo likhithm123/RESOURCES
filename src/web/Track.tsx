@@ -31,9 +31,9 @@ export default function Track() {
   }, []);
 
   // plan = explicit list of notebook slugs; "-slug" hides one suggested by the roles.
-  const plan = user!.plan;
+  const plan = user?.plan || [];
   const mine = useMemo(() => NOTEBOOKS.filter(nb =>
-    plan.includes(nb.slug) || (nb.roles.some(r => user!.career_roles.includes(r)) && !plan.includes("-" + nb.slug))), [user]);
+    plan.includes(nb.slug) || (nb.roles.some(r => (user?.career_roles || []).includes(r)) && !plan.includes("-" + nb.slug))), [user]);
   async function toggleNotebook(slug: string, show: boolean) {
     const next = plan.filter(x => x !== slug && x !== "-" + slug); next.push(show ? slug : "-" + slug);
     await api("/me", "PUT", { name: user!.name, career_roles: user!.career_roles, plan: next }); await refresh();
@@ -78,13 +78,13 @@ export default function Track() {
   return <>
     <div className="card">
       <div className="row"><div style={{ flex: 1, minWidth: 220 }}>
-        <h1>Hi {user!.name.split(" ")[0]}, here is your track sheet</h1>
-        <div className="muted small">Roles: {user!.career_roles.map(r => CAREER_ROLES.find(x => x.id === r)?.label).join(" · ")} · <Link to="/plan">change</Link></div>
+        <h1>Hi {user?.name ? user.name.split(" ")[0] : "Student"}, here is your track sheet</h1>
+        <div className="muted small">Roles: {(user?.career_roles || []).map(r => CAREER_ROLES.find(x => x.id === r)?.label).filter(Boolean).join(" · ")} · <Link to="/plan">change</Link></div>
       </div>
         <div className="row" style={{ gap: 20 }}>
           <div style={{ textAlign: "center" }}>
             <div style={{ fontSize: 28, fontWeight: 700, color: streak.current > 0 ? "#e65100" : "var(--ink)" }}>
-              🔥 {streak.current}
+              {streak.current}
             </div>
             <div className="small muted">day streak (best: {streak.longest})</div>
           </div>
@@ -135,20 +135,32 @@ export default function Track() {
       const isDsa = nb.slug.includes("dsa");
       const isA2Z = nb.slug === A2Z;
       const read = (page?: number, itemId?: string) => `/read/${nb.slug}${page ? `?page=${page}` : ""}${itemId ? `${page ? "&" : "?"}item=${encodeURIComponent(itemId)}` : ""}`;
+      const prefix = nb.slug.slice(0, 3);
+      const masterDoc = Object.values(docs).find(d => (d.slug === `${nb.slug}-master` || (d.slug.startsWith(prefix) && d.slug.endsWith("-master"))));
+      const quickPdf = `https://ik.imagekit.io/likhi/resources-portal/pdfs/${nb.slug}.pdf`;
+      const masterPdf = masterDoc ? `https://ik.imagekit.io/likhi/resources-portal/long-pdfs/${masterDoc.slug}.pdf` : null;
+
       return <div className={`nb ${isA2Z ? "nb-a2z" : isDsa ? "nb-dsa" : ""}`} key={nb.slug}>
         <div className="nb-head" onClick={() => flip(nb.slug)} role="button" aria-expanded={isOpen}>
           <span className="caret">{isOpen ? "▾" : "▸"}</span>
           <div style={{ flex: 1, minWidth: 160 }}>
             <h3>
               {nb.title}
-              {isA2Z && <span className="badge-practice" style={{ marginLeft: 8, fontSize: 11, background: "#ecfdf5", color: "#065f46", border: "1px solid #a7f3d0", padding: "2px 8px", borderRadius: 12, fontWeight: 600 }}>⚡ Practice available (Interactive TUF Sheets)</span>}
+              {isA2Z && <span className="badge-practice" style={{ marginLeft: 8, fontSize: 11, background: "#ecfdf5", color: "#065f46", border: "1px solid #a7f3d0", padding: "2px 8px", borderRadius: 12, fontWeight: 600 }}>Practice available (Interactive TUF Sheets)</span>}
               {isDsa && !isA2Z && <span className="badge-dsa" style={{ marginLeft: 8, fontSize: 11, background: "#eff6ff", color: "#1e40af", border: "1px solid #bfdbfe", padding: "2px 8px", borderRadius: 12, fontWeight: 600 }}>Core DSA</span>}
               {needle && matchingItemsCount > 0 && <span className="chip on small" style={{ fontSize: 11, verticalAlign: "middle", marginLeft: 6 }}>{matchingItemsCount} match{matchingItemsCount !== 1 ? "es" : ""}</span>}
             </h3>
             <div className="small muted">{items.length ? `${d} / ${items.length} done` : "Notes coming soon"}</div>
           </div>
-          <div className="row" style={{ width: 220 }}><Bar d={d} n={items.length} /></div>
-          {doc && <Link className="btn sm" to={read()} onClick={e => e.stopPropagation()}>Open notes</Link>}
+          <div className="row" style={{ width: 140 }}><Bar d={d} n={items.length} /></div>
+          <div className="row" style={{ gap: 6, flexWrap: "wrap", alignItems: "center" }} onClick={e => e.stopPropagation()}>
+            {doc && <Link className="btn sm primary" to={read()}>Open notes</Link>}
+            <a className="btn sm" href={quickPdf} target="_blank" rel="noopener noreferrer" title="Direct Quick Revision PDF">PDF</a>
+            {masterDoc && <>
+              <Link className="btn sm" to={`/read/${masterDoc.slug}`} style={{ borderColor: "var(--ink)", color: "var(--ink)" }}>Master ({masterDoc.pages}p)</Link>
+              <a className="btn sm" href={masterPdf!} target="_blank" rel="noopener noreferrer" title="Direct Long-Form Master PDF">Master PDF</a>
+            </>}
+          </div>
         </div>
         {isOpen && sections.map(sec => {
           const shown = sec.items
@@ -171,7 +183,7 @@ export default function Track() {
               <input type="checkbox" checked={done.has(it.id)} onChange={e => mark([it.id], e.target.checked)} aria-label={`Done: ${it.title}`} />
               {doc ? <Link className="t" to={read(it.page || sec.page, it.id)} onClick={() => mark([it.id], true)} title="Open the notes at this topic">{it.title}</Link> : <span className="t">{it.title}</span>}
               {doc && it.page && <Link className="btn sm primary" to={read(it.page, it.id)} onClick={() => mark([it.id], true)} title="Open our notes at this topic">Notes · p.{it.page}</Link>}
-              {nb.slug === A2Z && <a className="btn sm" href={`https://takeuforward.org/prep-hub/strivers-a2z-dsa-sheet?note=${tufSlug(it.title)}`} target="_blank" rel="noopener noreferrer" title="Extra resource on takeUforward">TUF ↗</a>}
+              {nb.slug === A2Z && <a className="btn sm" href={`https://takeuforward.org/prep-hub/strivers-a2z-dsa-sheet?note=${tufSlug(it.title)}`} target="_blank" rel="noopener noreferrer" title="Extra resource on takeUforward">TUF</a>}
             </div>)}
           </div>;
         })}

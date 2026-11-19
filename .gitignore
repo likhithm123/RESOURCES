@@ -11,3 +11,5 @@ dist
 *.log
 .DS_Store
 pdfs/
+*.pdf
+all_pdfs_local/

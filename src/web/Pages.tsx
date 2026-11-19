@@ -16,7 +16,11 @@ export function Library() {
     {docs && !shown.length && <div className="card">No notes published for your roles yet.</div>}
     <div className="grid">{shown.map(d => <div className="card" key={d.id} style={{ marginBottom: 0 }}>
       <h3>{d.title}</h3><p className="small muted">{d.description || `${d.pages} pages`}</p>
-      <div className="row"><Link className="btn primary sm" to={`/read/${d.slug}`}>Read</Link><span className="small muted">{d.pages} pages</span></div>
+      <div className="row" style={{ gap: 8, alignItems: "center" }}>
+        <Link className="btn primary sm" to={`/read/${d.slug}`}>Read</Link>
+        <a className="btn sm" href={`https://ik.imagekit.io/likhi/resources-portal/pdfs/${d.slug}.pdf`} target="_blank" rel="noopener noreferrer" title="Direct PDF via ImageKit">PDF ↗</a>
+        <span className="small muted">{d.pages} pages</span>
+      </div>
     </div>)}</div>
   </>;
 }

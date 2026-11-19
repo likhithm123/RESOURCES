@@ -237,6 +237,7 @@ export default function Reader() {
         <button className="sm hide-sm" onClick={() => setZoom(z => Math.max(0.6, +(z - 0.15).toFixed(2)))} aria-label="Zoom out">−</button>
         <button className="sm hide-sm" onClick={() => setZoom(z => Math.min(2, +(z + 0.15).toFixed(2)))} aria-label="Zoom in">+</button>
         <button className={`sm ${showSearch ? "primary" : ""}`} onClick={() => { setShowSearch(s => !s); setTimeout(() => document.getElementById("doc-search")?.focus(), 30); }} aria-label="Search in document">🔍<span className="hide-sm"> Search</span></button>
+        <a className="btn sm hide-sm" href={`https://ik.imagekit.io/likhi/resources-portal/pdfs/${slug}.pdf`} target="_blank" rel="noopener noreferrer" title="Direct PDF via ImageKit">📥 PDF</a>
         {pct < 100 && <span className="small muted hide-sm" title="Pages ready for instant scrolling">{pct}% loaded</span>}
       </>}
     </div>

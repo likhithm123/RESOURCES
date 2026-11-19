@@ -41,7 +41,7 @@ function Overview() {
 async function uploadPdf(file: File, folder: string, onProgress: (done: number, total: number) => void) {
   const pdfjs = await import("pdfjs-dist");
   pdfjs.GlobalWorkerOptions.workerSrc = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url")).default;
-  const pdf = await pdfjs.getDocument({ data: await file.arrayBuffer(), isEvalSupported: false }).promise;
+  const pdf = await pdfjs.getDocument({ data: await file.arrayBuffer(), isEvalSupported: false } as any).promise;
   const canvas = document.createElement("canvas");
   const texts: { page: number; text: string; boxes: number[][] }[] = [];
   for (let n = 1; n <= pdf.numPages; n++) {

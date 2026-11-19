@@ -34,7 +34,7 @@ export function RoleChips({ value, onChange }: { value: string[]; onChange: (v: 
 /* ---------------- Sign in / sign up / reset (all confirmed with an emailed code) ---------------- */
 function AuthPage({ mode }: { mode: "login" | "signup" | "forgot" }) {
   const { setUser } = useAuth(); const nav = useNavigate();
-  const [f, setF] = useState({ name: "", email: "", password: "", code: "", phone: "", roles: ALL_ROLES });
+  const [f, setF] = useState<{ name: string; email: string; password: string; code: string; phone: string; roles: string[] }>({ name: "", email: "", password: "", code: "", phone: "", roles: ALL_ROLES });
   const [consent, setConsent] = useState(false);
   const [step, setStep] = useState<"form" | "code">("form");
   const [purpose, setPurpose] = useState("login");

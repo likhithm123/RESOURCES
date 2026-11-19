@@ -135,6 +135,7 @@ export default function Track() {
       const isDsa = nb.slug.includes("dsa");
       const isA2Z = nb.slug === A2Z;
       const read = (page?: number, itemId?: string) => `/read/${nb.slug}${page ? `?page=${page}` : ""}${itemId ? `${page ? "&" : "?"}item=${encodeURIComponent(itemId)}` : ""}`;
+      const doc = docs[nb.slug];
       const prefix = nb.slug.slice(0, 3);
       const masterDoc = Object.values(docs).find(d => (d.slug === `${nb.slug}-master` || (d.slug.startsWith(prefix) && d.slug.endsWith("-master"))));
       const quickPdf = `https://ik.imagekit.io/likhi/resources-portal/pdfs/${nb.slug}.pdf`;

@@ -85,3 +85,137 @@ export function Connect() {
     </div>)}
   </>;
 }
+
+/* ---------------- Certifications Portal (Free & Paid) ---------------- */
+export function Certifications() {
+  const [certs, setCerts] = useState<any[]>([]);
+  const [tier, setTier] = useState<string>("all");
+  const [role, setRole] = useState<string>("all");
+  const [q, setQ] = useState("");
+  const [err, setErr] = useState("");
+
+  useEffect(() => {
+    api("/certifications").then(r => setCerts(r.certifications)).catch(e => setErr(e.message));
+  }, []);
+
+  const needle = q.toLowerCase();
+  const filtered = certs.filter(c => {
+    if (tier !== "all" && c.tier !== tier) return false;
+    if (role !== "all" && c.role !== role) return false;
+    if (needle && ![c.title, c.provider, c.description, c.role].join(" ").toLowerCase().includes(needle)) return false;
+    return true;
+  });
+
+  return <>
+    <div className="row"><h1 style={{ flex: 1 }}>High-Value Tech Certifications</h1>
+      <Link to="/read/37-top-tech-certifications-guide" className="btn sm primary">Open Certifications Study Guide PDF ↗</Link>
+    </div>
+    <p className="muted">Hand-curated free and paid certifications that carry genuine weight with hiring managers across Cloud, DevOps, Cyber Security, and Software Engineering.</p>
+    <Msg>{err}</Msg>
+
+    <div className="row" style={{ gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
+      <input placeholder="Search certifications (e.g. AWS, CKA, Security+, Terraform)" value={q} onChange={e => setQ(e.target.value)} style={{ flex: 1, minWidth: 240 }} aria-label="Search certifications" />
+      <select value={tier} onChange={e => setTier(e.target.value)} aria-label="Filter by cost" style={{ width: 140 }}>
+        <option value="all">All Costs</option>
+        <option value="free">Free ($0)</option>
+        <option value="paid">Paid</option>
+      </select>
+      <select value={role} onChange={e => setRole(e.target.value)} aria-label="Filter by role" style={{ width: 160 }}>
+        <option value="all">All Roles</option>
+        <option value="cloud">Cloud / AWS / Azure</option>
+        <option value="devops">DevOps / Kubernetes</option>
+        <option value="security">Cyber Security</option>
+        <option value="sde">Software Engineer</option>
+      </select>
+    </div>
+
+    {!filtered.length && <div className="card muted">No certifications match your filters.</div>}
+    <div className="grid">
+      {filtered.map(c => <div className="card" key={c.id} style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", marginBottom: 0, borderTop: `4px solid ${c.tier === "free" ? "#10b981" : "#3b82f6"}` }}>
+        <div>
+          <div className="row" style={{ marginBottom: 6 }}>
+            <span className="small muted" style={{ fontWeight: 600 }}>{c.provider}</span>
+            <span className={`tag ${c.tier === "free" ? "ok" : ""}`} style={{ marginLeft: "auto", textTransform: "capitalize" }}>{c.cost}</span>
+          </div>
+          <h3 style={{ margin: "4px 0 8px" }}>{c.title}</h3>
+          <p className="small muted" style={{ lineHeight: 1.5 }}>{c.description}</p>
+        </div>
+        <div className="row" style={{ marginTop: 14, gap: 8, flexWrap: "wrap" }}>
+          {c.url && <a className="btn sm primary" href={c.url} target="_blank" rel="noopener noreferrer">Official Exam ↗</a>}
+          {c.resources_url && <a className="btn sm" href={c.resources_url} target="_blank" rel="noopener noreferrer">Free Study Prep ↗</a>}
+          <span className="small muted" style={{ marginLeft: "auto", textTransform: "uppercase", fontSize: 11 }}>{c.role}</span>
+        </div>
+      </div>)}
+    </div>
+  </>;
+}
+
+/* ---------------- User Suggestions & Feedback ---------------- */
+export function Feedback() {
+  const { user } = useAuth();
+  const [f, setF] = useState({ name: user?.name || "", email: user?.email || "", category: "suggestion", message: "" });
+  const [busy, setBusy] = useState(false);
+  const [ok, setOk] = useState("");
+  const [err, setErr] = useState("");
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault(); setErr(""); setOk(""); setBusy(true);
+    try {
+      await api("/feedback", "POST", f);
+      setOk("Thank you! Your feedback has been sent directly to the portal administrators.");
+      setF(prev => ({ ...prev, message: "" }));
+    } catch (x: any) { setErr(x.message); } finally { setBusy(false); }
+  }
+
+  return <div style={{ maxWidth: 640, margin: "auto" }}>
+    <h1>Suggestions and Feedback</h1>
+    <p className="muted">Have an idea for a new topic? Found an inaccuracy or typo? Need a specific cheat sheet or PDF? Let us know — every suggestion is emailed straight to our admin team.</p>
+    <Msg>{err}</Msg><Msg kind="ok">{ok}</Msg>
+    <form className="card" onSubmit={submit}>
+      <div className="grid">
+        <label className="f"><span>Your name</span><input value={f.name} onChange={e => setF({ ...f, name: e.target.value })} required /></label>
+        <label className="f"><span>Your email</span><input type="email" value={f.email} onChange={e => setF({ ...f, email: e.target.value })} required /></label>
+      </div>
+      <label className="f"><span>Feedback Category</span>
+        <select value={f.category} onChange={e => setF({ ...f, category: e.target.value })}>
+          <option value="suggestion">New Topic / Notebook Suggestion</option>
+          <option value="correction">Content Inaccuracy / Error Correction</option>
+          <option value="feature">Platform UI / Feature Improvement</option>
+          <option value="other">General Feedback</option>
+        </select>
+      </label>
+      <label className="f"><span>Your message or suggestion details</span>
+        <textarea rows={6} value={f.message} onChange={e => setF({ ...f, message: e.target.value })} required minLength={5} placeholder="Describe the topic, explanation, or feature you'd like to see..." />
+      </label>
+      <button className="primary" disabled={busy}>{busy ? "Sending..." : "Submit feedback to admins"}</button>
+    </form>
+  </div>;
+}
+
+/* ---------------- Legal Pages: Terms & Privacy (Admin Managed) ---------------- */
+export function Legal({ type }: { type: "terms" | "privacy" }) {
+  const [settings, setSettings] = useState<Record<string, string>>({});
+  const [err, setErr] = useState("");
+
+  useEffect(() => {
+    api("/settings").then(r => setSettings(r.settings || {})).catch(e => setErr(e.message));
+  }, []);
+
+  const isTerms = type === "terms";
+  const title = isTerms ? "Terms and Conditions" : "Privacy Policy";
+  const content = isTerms ? settings.terms : settings.privacy;
+
+  return <div style={{ maxWidth: 760, margin: "auto" }}>
+    <h1>{title}</h1>
+    <div className="card small" style={{ background: "#fffbeb", border: "1px solid #fef3c7", marginBottom: 20 }}>
+      <b>Disclaimer:</b> {settings.disclaimer || "This platform is an independent student & developer preparation resource. We are not affiliated with, endorsed by, or representing any company, official certification provider, or institution. We do not hold any legal responsibility for the content; while we ensure maximum accuracy and rigor, content is provided as-is for educational prep."}
+    </div>
+    <Msg>{err}</Msg>
+    <div className="card" style={{ whiteSpace: "pre-wrap", lineHeight: 1.7, fontSize: 15 }}>
+      {content || "Loading legal notice..."}
+    </div>
+    <div className="small muted" style={{ marginTop: 12 }}>
+      Have legal or content questions? Reach out via our <Link to="/feedback">feedback form</Link>.
+    </div>
+  </div>;
+}

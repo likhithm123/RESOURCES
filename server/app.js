@@ -447,4 +447,115 @@ app.delete("/admin/team/:id", async c => {
   return c.json({ ok: true });
 });
 
+/* ---------------- Site Settings & Legal (Public & Admin CMS) ---------------- */
+app.get("/settings", async c => {
+  const rows = await db.all("SELECT key, value FROM rp_site_settings");
+  const settings = Object.fromEntries(rows.map(r => [r.key, r.value]));
+  return c.json({ settings });
+});
+
+app.get("/admin/settings", async c => {
+  admin(c);
+  const rows = await db.all("SELECT key, value, updated_at FROM rp_site_settings");
+  return c.json({ settings: Object.fromEntries(rows.map(r => [r.key, r.value])) });
+});
+
+app.put("/admin/settings", async c => {
+  admin(c); const b = await body(c);
+  if (b.disclaimer !== undefined) await db.run("INSERT OR REPLACE INTO rp_site_settings (key, value, updated_at) VALUES ('disclaimer', ?, datetime('now'))", [str(b.disclaimer, 5000)]);
+  if (b.terms !== undefined) await db.run("INSERT OR REPLACE INTO rp_site_settings (key, value, updated_at) VALUES ('terms', ?, datetime('now'))", [str(b.terms, 20000)]);
+  if (b.privacy !== undefined) await db.run("INSERT OR REPLACE INTO rp_site_settings (key, value, updated_at) VALUES ('privacy', ?, datetime('now'))", [str(b.privacy, 20000)]);
+  return c.json({ ok: true });
+});
+
+/* ---------------- Certifications (Public List & Admin CMS) ---------------- */
+app.get("/certifications", async c => {
+  const rows = await db.all("SELECT id, title, provider, tier, cost, role, url, resources_url, description, sort_order FROM rp_certifications WHERE published = 1 ORDER BY sort_order, id");
+  return c.json({ certifications: rows });
+});
+
+app.get("/admin/certifications", async c => {
+  admin(c);
+  const rows = await db.all("SELECT * FROM rp_certifications ORDER BY sort_order, id");
+  return c.json({ certifications: rows });
+});
+
+app.post("/admin/certifications", async c => {
+  admin(c); const b = await body(c);
+  const title = str(b.title, 120); if (!title) fail(400, "Enter certification title.");
+  const provider = str(b.provider, 100); if (!provider) fail(400, "Enter provider name.");
+  await db.run(
+    "INSERT INTO rp_certifications (title, provider, tier, cost, role, url, resources_url, description, sort_order, published) VALUES (?,?,?,?,?,?,?,?,?,?)",
+    [title, provider, str(b.tier, 20) || "free", str(b.cost, 50) || "Free", str(b.role, 30) || "sde", safeUrl(b.url), safeUrl(b.resources_url), str(b.description, 1000), Number(b.sort_order) || 0, b.published === false ? 0 : 1]
+  );
+  return c.json({ ok: true });
+});
+
+app.put("/admin/certifications/:id", async c => {
+  admin(c); const b = await body(c), id = Number(c.req.param("id"));
+  const title = str(b.title, 120); if (!title) fail(400, "Enter certification title.");
+  await db.run(
+    "UPDATE rp_certifications SET title = ?, provider = ?, tier = ?, cost = ?, role = ?, url = ?, resources_url = ?, description = ?, sort_order = ?, published = ? WHERE id = ?",
+    [title, str(b.provider, 100), str(b.tier, 20) || "free", str(b.cost, 50) || "Free", str(b.role, 30) || "sde", safeUrl(b.url), safeUrl(b.resources_url), str(b.description, 1000), Number(b.sort_order) || 0, b.published === 0 || b.published === false ? 0 : 1, id]
+  );
+  return c.json({ ok: true });
+});
+
+app.delete("/admin/certifications/:id", async c => {
+  admin(c); await db.run("DELETE FROM rp_certifications WHERE id = ?", [Number(c.req.param("id"))]);
+  return c.json({ ok: true });
+});
+
+/* ---------------- User Suggestions & Feedback (Triggers Admin Email) ---------------- */
+app.post("/feedback", async c => {
+  const u = c.get("user");
+  const b = await body(c);
+  const name = str(b.name || u?.name, 80);
+  const email = cleanEmail(b.email || u?.email);
+  const category = str(b.category, 50) || "suggestion";
+  const message = str(b.message, 3000);
+  if (message.length < 5) fail(400, "Please enter a message (at least 5 characters).");
+
+  await rateLimit(`feedback:${email}`, 5, 3600); // max 5 per hour
+  const res = await db.run(
+    "INSERT INTO rp_feedback (user_id, name, email, category, message) VALUES (?, ?, ?, ?, ?)",
+    [u?.id || null, name, email, category, message]
+  );
+
+  // Trigger notification email to admins
+  const admins = adminEmails();
+  if (admins.length) {
+    const subject = `[Feedback - ${category.toUpperCase()}] from ${name}`;
+    const emailBody = `
+      <p><b>From:</b> ${name} (${email})</p>
+      <p><b>Category:</b> ${category}</p>
+      <p><b>Message:</b></p>
+      <div style="background:#f4f5f7;padding:12px;border-radius:6px;white-space:pre-wrap;font-family:monospace;">${message}</div>
+      <p style="margin-top:16px"><a href="${process.env.APP_ORIGIN || 'https://resourcescse.vercel.app'}/admin/feedback">View in Admin Dashboard &rarr;</a></p>
+    `;
+    for (const adm of admins) {
+      await sendMail(adm, subject, `New ${category} from ${name}`, emailBody).catch(e => console.error("Admin feedback email failed:", e.message));
+    }
+  }
+
+  return c.json({ ok: true, id: res.lastId });
+});
+
+app.get("/admin/feedback", async c => {
+  admin(c);
+  const rows = await db.all("SELECT f.*, u.career_roles FROM rp_feedback f LEFT JOIN rp_users u ON u.id = f.user_id ORDER BY CASE f.status WHEN 'new' THEN 0 ELSE 1 END, f.id DESC LIMIT 300");
+  return c.json({ feedback: rows });
+});
+
+app.put("/admin/feedback/:id", async c => {
+  admin(c); const b = await body(c), id = Number(c.req.param("id"));
+  await db.run("UPDATE rp_feedback SET status = ?, admin_reply = ? WHERE id = ?", [str(b.status, 20) || "resolved", str(b.admin_reply, 2000), id]);
+  return c.json({ ok: true });
+});
+
+app.delete("/admin/feedback/:id", async c => {
+  admin(c); await db.run("DELETE FROM rp_feedback WHERE id = ?", [Number(c.req.param("id"))]);
+  return c.json({ ok: true });
+});
+
 app.all("*", c => c.json({ error: "Not found." }, 404));

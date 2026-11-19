@@ -49,6 +49,18 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://resourcescse.vercel.app/read/10-dsa-basics-data-structures</loc>
+    <lastmod>2026-11-19</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://resourcescse.vercel.app/read/11-dsa-a2z-solutions</loc>
+    <lastmod>2026-11-19</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://resourcescse.vercel.app/read/01-cpp-basics-to-advanced</loc>
     <lastmod>2026-11-19</lastmod>
     <changefreq>weekly</changefreq>
@@ -98,18 +110,6 @@
   </url>
   <url>
     <loc>https://resourcescse.vercel.app/read/09-aws-cloud</loc>
-    <lastmod>2026-11-19</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://resourcescse.vercel.app/read/10-dsa-basics-data-structures</loc>
-    <lastmod>2026-11-19</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://resourcescse.vercel.app/read/11-dsa-a2z-solutions</loc>
     <lastmod>2026-11-19</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -242,6 +242,30 @@
   </url>
   <url>
     <loc>https://resourcescse.vercel.app/read/33-forward-deployed-engineer</loc>
+    <lastmod>2026-11-19</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://resourcescse.vercel.app/read/34-network-engineering</loc>
+    <lastmod>2026-11-19</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://resourcescse.vercel.app/read/35-claude-anthropic-and-mcp</loc>
+    <lastmod>2026-11-19</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://resourcescse.vercel.app/read/36-php-and-modern-backend</loc>
+    <lastmod>2026-11-19</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://resourcescse.vercel.app/read/37-top-tech-certifications-guide</loc>
     <lastmod>2026-11-19</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>

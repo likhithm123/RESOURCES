@@ -24,9 +24,25 @@
   - Machine Learning, Deep Learning, GenAI & LLMs (LangChain, LangGraph, Agents, FastAPI)
   - DevOps (Docker, Kubernetes, Terraform, CI/CD Pipelines), Cyber Security, REST APIs, Rust, and Full Stack Development.
   - Forward Deployed Engineer (FDE) Role Guide: enterprise systems, air-gapped deployments, grounded RAG, data archaeology, client scenarios.
+  - Network Engineering: OSI 7-layer stack, switching, VLANs, OSPF, BGP, TCP/UDP, DNS, NAT/PAT, firewalls, and packet diagnostics.
+  - Claude & Anthropic AI: Model Context Protocol (MCP), Constitutional AI, Azure AI, and prompt optimization guide.
+  - Modern PHP 8.x & Laravel: Share-nothing request lifecycle, Eloquent ORM, Blade, queues, and headless WordPress.
+  - Top Tech Certifications Guide: High-ROI credentials (AWS, CKA, Terraform, Security+, Azure) and verified free badge tracks.
 - **Track Sheet & Day-Wise Streaks:**
   - Real-time syllabus tracker tailored to selected career roles (SDE, Full Stack, AI, ML, Data Science, DevOps, Security, Salesforce).
-  - Tracks individual subtopic completion percentage and records daily study streaks.
+  - DSA prioritized at top with emerald accent highlight and interactive practice sheets.
+  - Search ranking algorithm: elevates matching notebooks, sections, and items to the top with match badges.
+- **High-Value Certifications Portal (`/certifications`):**
+  - Public directory of verified free and paid tech certifications with direct exam links and free prep roadmaps.
+  - Admin CMS to add, edit, sort, and manage certifications.
+- **Inbound Suggestions & Feedback System (`/feedback`):**
+  - Instant submission for topic requests, content corrections, and feature ideas.
+  - Automated transactional email alerts dispatched directly to system administrators.
+  - Dedicated Admin CMS tab to review, resolve, and reply to user feedback.
+- **Legal Compliance & Disclaimer CMS:**
+  - Independent educational resource disclaimer across platform footer, signup consent, and legal pages.
+  - Mandatory consent checkbox on account registration.
+  - Full Admin CMS to manage Disclaimer, Terms & Conditions, and Privacy Policy.
 - **Protected Document Reader:**
   - Zero raw PDF exposure; documents are stored as private ImageKit page images.
   - On-the-fly watermarking stamped with the authenticated user's email address.

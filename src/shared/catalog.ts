@@ -14,6 +14,8 @@ export type Notebook = { slug: string; title: string; roles: string[] };
 
 const ALL = ["sde", "fullstack", "ai", "ml", "data", "devops", "security", "salesforce"];
 export const NOTEBOOKS: Notebook[] = [
+  { slug: "10-dsa-basics-data-structures", title: "DSA Basics: Data Structures", roles: ["sde", "fullstack", "ai", "ml", "data"] },
+  { slug: "11-dsa-a2z-solutions", title: "DSA A2Z Sheet Solutions (C++ and Python)", roles: ["sde", "fullstack", "ai", "ml"] },
   { slug: "01-cpp-basics-to-advanced", title: "C++ Basics to Advanced OOP", roles: ["sde"] },
   { slug: "02-python-basics-to-pandas", title: "Python Basics to Pandas", roles: ["sde", "ai", "ml", "data", "devops", "security"] },
   { slug: "03-java-basics-to-advanced", title: "Java Basics to Advanced", roles: ["sde", "fullstack", "salesforce"] },
@@ -23,8 +25,6 @@ export const NOTEBOOKS: Notebook[] = [
   { slug: "07-git-github-scenarios", title: "Git and GitHub Scenarios", roles: ALL },
   { slug: "08-linux", title: "Linux", roles: ["sde", "devops", "security", "ai", "ml"] },
   { slug: "09-aws-cloud", title: "AWS Cloud", roles: ["sde", "fullstack", "ai", "ml", "devops", "security", "data"] },
-  { slug: "10-dsa-basics-data-structures", title: "DSA Basics: Data Structures", roles: ["sde", "fullstack", "ai", "ml", "data"] },
-  { slug: "11-dsa-a2z-solutions", title: "DSA A2Z Sheet Solutions (C++ and Python)", roles: ["sde", "fullstack", "ai", "ml"] },
   { slug: "12-system-design-hld-lld", title: "System Design: HLD and LLD", roles: ["sde", "fullstack", "ai", "devops"] },
   { slug: "13-operating-systems", title: "Operating Systems", roles: ["sde", "devops", "security"] },
   { slug: "14-computer-networks", title: "Computer Networks", roles: ["sde", "devops", "security", "fullstack"] },
@@ -47,6 +47,10 @@ export const NOTEBOOKS: Notebook[] = [
   { slug: "31-full-stack-development", title: "Full Stack Development", roles: ["fullstack", "sde"] },
   { slug: "32-hr-interview-self-introduction", title: "HR Interview, Self Introduction and Behavioural Questions", roles: ALL },
   { slug: "33-forward-deployed-engineer", title: "Forward Deployed Engineer (FDE) Role Guide", roles: ["sde", "fullstack", "ai", "data", "devops"] },
+  { slug: "34-network-engineering", title: "Network Engineering: OSI, Routing, Switching, BGP, Firewalls", roles: ["devops", "security", "sde", "fullstack"] },
+  { slug: "35-claude-anthropic-and-mcp", title: "Claude Architecture, Anthropic AI, MCP and Azure AI", roles: ["ai", "ml", "sde", "fullstack"] },
+  { slug: "36-php-and-modern-backend", title: "Modern PHP 8.x, Laravel and Web Architecture", roles: ["fullstack", "sde"] },
+  { slug: "37-top-tech-certifications-guide", title: "Valuable Tech Certifications Guide (Free & Paid)", roles: ALL },
 ];
 
 export const roleLabel = (id: string) => CAREER_ROLES.find(r => r.id === id)?.label || id;

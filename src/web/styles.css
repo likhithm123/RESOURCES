@@ -28,8 +28,10 @@ label.f { display: block; margin-bottom: 12px; font-size: 13px; color: var(--mut
 .chips { display: flex; flex-wrap: wrap; gap: 8px; } .chip { border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; cursor: pointer; background: #fff; font-size: 14px; user-select: none; } .chip.on { background: var(--ink); color: #fff; border-color: var(--ink); }
 .bar { height: 8px; background: #e6e9f4; border-radius: 99px; overflow: hidden; flex: 1; min-width: 80px; } .bar > i { display: block; height: 100%; background: linear-gradient(90deg, #1b3fae, #3f8cff); border-radius: 99px; transition: width .25s; }
 .pct { font-variant-numeric: tabular-nums; font-weight: 600; min-width: 46px; text-align: right; }
-.nb { border: 1px solid var(--line); border-radius: 12px; background: #fff; margin-bottom: 10px; overflow: hidden; }
-.nb-head { display: flex; gap: 12px; align-items: center; padding: 12px 14px; cursor: pointer; } .nb-head:hover { background: #fafbff; }
+.nb { border: 1px solid var(--line); border-radius: 12px; background: #fff; margin-bottom: 10px; overflow: hidden; transition: box-shadow .2s ease, border-color .2s ease; }
+.nb.nb-dsa { background: #f8faff; border: 1.5px solid #bfdbfe; border-left: 5px solid #3b82f6; }
+.nb.nb-a2z { background: #f6fdf9; border: 1.5px solid #a7f3d0; border-left: 5px solid #10b981; box-shadow: 0 2px 12px rgba(16, 185, 129, 0.08); }
+.nb-head { display: flex; gap: 12px; align-items: center; padding: 12px 14px; cursor: pointer; } .nb-head:hover { background: rgba(0,0,0,0.02); }
 .sec { border-top: 1px solid var(--line); } .sec-head { display: flex; gap: 10px; align-items: center; padding: 9px 14px 9px 26px; cursor: pointer; background: #fafbff; font-weight: 600; font-size: 14px; }
 .item { display: flex; gap: 10px; align-items: center; padding: 7px 14px 7px 40px; border-top: 1px solid #f0f2f8; font-size: 14px; } .item.done { background: #fafcff; } .item.done .t { color: var(--text); text-decoration: none; }
 .item .t { flex: 1; } .tag { font-size: 11px; padding: 2px 7px; border-radius: 6px; background: var(--soft); color: var(--ink2); white-space: nowrap; }

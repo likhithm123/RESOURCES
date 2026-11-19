@@ -132,12 +132,19 @@ export default function Track() {
       const items = sections.flatMap(s => s.items); const d = items.filter(i => done.has(i.id)).length;
       const matchingItemsCount = needle ? items.filter(i => i.title.toLowerCase().includes(needle) || sections.some(s => s.items.includes(i) && s.title.toLowerCase().includes(needle))).length : 0;
       const isOpen = open.has(nb.slug) || (!!needle && matchingItemsCount > 0);
+      const isDsa = nb.slug.includes("dsa");
+      const isA2Z = nb.slug === A2Z;
       const read = (page?: number, itemId?: string) => `/read/${nb.slug}${page ? `?page=${page}` : ""}${itemId ? `${page ? "&" : "?"}item=${encodeURIComponent(itemId)}` : ""}`;
-      return <div className="nb" key={nb.slug}>
+      return <div className={`nb ${isA2Z ? "nb-a2z" : isDsa ? "nb-dsa" : ""}`} key={nb.slug}>
         <div className="nb-head" onClick={() => flip(nb.slug)} role="button" aria-expanded={isOpen}>
           <span className="caret">{isOpen ? "▾" : "▸"}</span>
           <div style={{ flex: 1, minWidth: 160 }}>
-            <h3>{nb.title} {needle && matchingItemsCount > 0 && <span className="chip on small" style={{ fontSize: 11, verticalAlign: "middle", marginLeft: 6 }}>{matchingItemsCount} match{matchingItemsCount !== 1 ? "es" : ""}</span>}</h3>
+            <h3>
+              {nb.title}
+              {isA2Z && <span className="badge-practice" style={{ marginLeft: 8, fontSize: 11, background: "#ecfdf5", color: "#065f46", border: "1px solid #a7f3d0", padding: "2px 8px", borderRadius: 12, fontWeight: 600 }}>⚡ Practice available (Interactive TUF Sheets)</span>}
+              {isDsa && !isA2Z && <span className="badge-dsa" style={{ marginLeft: 8, fontSize: 11, background: "#eff6ff", color: "#1e40af", border: "1px solid #bfdbfe", padding: "2px 8px", borderRadius: 12, fontWeight: 600 }}>Core DSA</span>}
+              {needle && matchingItemsCount > 0 && <span className="chip on small" style={{ fontSize: 11, verticalAlign: "middle", marginLeft: 6 }}>{matchingItemsCount} match{matchingItemsCount !== 1 ? "es" : ""}</span>}
+            </h3>
             <div className="small muted">{items.length ? `${d} / ${items.length} done` : "Notes coming soon"}</div>
           </div>
           <div className="row" style={{ width: 220 }}><Bar d={d} n={items.length} /></div>

@@ -4,14 +4,23 @@ import { api, type Doc } from "./api";
 import { Msg, RoleChips } from "./App";
 import { NOTEBOOKS, roleLabel } from "../shared/catalog";
 
-const TABS = ["Overview", "Documents", "Resources & Projects", "Connect", "Users", "Team", "Audit Logs"] as const;
+const TABS = ["Overview", "Documents", "Certifications", "Feedback", "Site Settings", "Resources & Projects", "Connect", "Users", "Team", "Audit Logs"] as const;
 
 export default function Admin() {
   const [tab, setTab] = useState<(typeof TABS)[number]>("Overview");
   return <>
     <h1>Admin</h1>
     <div className="chips" style={{ margin: "10px 0 16px" }}>{TABS.map(t => <span key={t} className={`chip ${tab === t ? "on" : ""}`} onClick={() => setTab(t)}>{t}</span>)}</div>
-    {tab === "Overview" && <Overview />}{tab === "Documents" && <Documents />}{tab === "Resources & Projects" && <LinksAdmin />}{tab === "Connect" && <ConnectAdmin />}{tab === "Users" && <Users />}{tab === "Team" && <TeamAdmin />}{tab === "Audit Logs" && <AuditLogsAdmin />}
+    {tab === "Overview" && <Overview />}
+    {tab === "Documents" && <Documents />}
+    {tab === "Certifications" && <CertificationsAdmin />}
+    {tab === "Feedback" && <FeedbackAdmin />}
+    {tab === "Site Settings" && <SettingsAdmin />}
+    {tab === "Resources & Projects" && <LinksAdmin />}
+    {tab === "Connect" && <ConnectAdmin />}
+    {tab === "Users" && <Users />}
+    {tab === "Team" && <TeamAdmin />}
+    {tab === "Audit Logs" && <AuditLogsAdmin />}
   </>;
 }
 
@@ -358,4 +367,215 @@ function AuditLogsAdmin() {
       </table>}
     </div>
   </>;
+}
+
+/* ---------------- Feedback & Suggestions Admin ---------------- */
+function FeedbackAdmin() {
+  const [feedback, setFeedback] = useState<any[]>([]);
+  const [err, setErr] = useState("");
+  const [ok, setOk] = useState("");
+  const load = () => { api("/admin/feedback").then(r => setFeedback(r.feedback || [])).catch(e => setErr(e.message)); };
+  useEffect(load, []);
+
+  async function updateStatus(id: number, status: string, reply: string = "") {
+    setErr(""); setOk("");
+    try {
+      await api(`/admin/feedback/${id}`, "PUT", { status, admin_reply: reply });
+      setOk(`Feedback marked as ${status}.`);
+      load();
+    } catch (e: any) { setErr(e.message); }
+  }
+
+  async function remove(id: number) {
+    if (!confirm("Delete this feedback?")) return;
+    try {
+      await api(`/admin/feedback/${id}`, "DELETE", {});
+      load();
+    } catch (e: any) { setErr(e.message); }
+  }
+
+  return <>
+    <div className="row"><h2 style={{ flex: 1 }}>User Suggestions & Inbound Feedback ({feedback.length})</h2><button className="sm" onClick={load}>Refresh</button></div>
+    <Msg>{err}</Msg><Msg kind="ok">{ok}</Msg>
+    {!feedback.length && <div className="card muted">No feedback received yet.</div>}
+    {feedback.map(f => (
+      <div className="card" key={f.id} style={{ borderLeft: `5px solid ${f.status === "new" ? "#f59e0b" : "#10b981"}` }}>
+        <div className="row" style={{ marginBottom: 6 }}>
+          <span className={`tag ${f.status === "new" ? "err" : "ok"}`}>{f.status.toUpperCase()}</span>
+          <span className="tag">{f.category}</span>
+          <b>{f.name}</b> <span className="small muted">({f.email})</span>
+          <span className="small muted right">{f.created_at}</span>
+        </div>
+        <div style={{ whiteSpace: "pre-wrap", background: "#f8f9fa", padding: "10px 14px", borderRadius: 6, margin: "8px 0" }}>
+          {f.message}
+        </div>
+        <div className="row" style={{ gap: 8, marginTop: 8 }}>
+          {f.status === "new" ? (
+            <button className="sm primary" onClick={() => updateStatus(f.id, "resolved")}>Mark as Resolved</button>
+          ) : (
+            <button className="sm" onClick={() => updateStatus(f.id, "new")}>Reopen</button>
+          )}
+          <a className="btn sm" href={`mailto:${f.email}?subject=Re:%20Feedback%20on%20Resources%20Portal`}>Reply via Email ↗</a>
+          <button className="sm err right" onClick={() => remove(f.id)}>Delete</button>
+        </div>
+      </div>
+    ))}
+  </>;
+}
+
+/* ---------------- Certifications Admin CMS ---------------- */
+function CertificationsAdmin() {
+  const [certs, setCerts] = useState<any[]>([]);
+  const [edit, setEdit] = useState<any>(null);
+  const [err, setErr] = useState("");
+  const [ok, setOk] = useState("");
+  const blank = { title: "", provider: "", tier: "free", cost: "Free ($0)", role: "sde", url: "", resources_url: "", description: "", sort_order: 0, published: 1 };
+
+  const load = () => { api("/admin/certifications").then(r => setCerts(r.certifications || [])).catch(e => setErr(e.message)); };
+  useEffect(load, []);
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault(); setErr(""); setOk("");
+    try {
+      if (edit.id) {
+        await api(`/admin/certifications/${edit.id}`, "PUT", edit);
+        setOk("Certification updated.");
+      } else {
+        await api("/admin/certifications", "POST", edit);
+        setOk("Certification created.");
+      }
+      setEdit(null);
+      load();
+    } catch (x: any) { setErr(x.message); }
+  }
+
+  async function remove(id: number) {
+    if (!confirm("Delete this certification?")) return;
+    try { await api(`/admin/certifications/${id}`, "DELETE", {}); load(); } catch (x: any) { setErr(x.message); }
+  }
+
+  const set = (k: string) => (e: any) => setEdit({ ...edit, [k]: e.target.type === "checkbox" ? (e.target.checked ? 1 : 0) : e.target.value });
+
+  return <>
+    <div className="row"><h2 style={{ flex: 1 }}>Manage Certifications ({certs.length})</h2>
+      <button className="primary sm" onClick={() => setEdit(blank)}>+ Add Certification</button>
+    </div>
+    <Msg>{err}</Msg><Msg kind="ok">{ok}</Msg>
+
+    {edit && (
+      <form className="card" onSubmit={save} style={{ border: "2px solid var(--accent, #6366f1)" }}>
+        <h3>{edit.id ? "Edit Certification" : "Add Certification"}</h3>
+        <div className="grid">
+          <label className="f"><span>Title</span><input value={edit.title} onChange={set("title")} required /></label>
+          <label className="f"><span>Provider (e.g. AWS, CNCF, Microsoft, freeCodeCamp)</span><input value={edit.provider} onChange={set("provider")} required /></label>
+          <label className="f"><span>Tier</span>
+            <select value={edit.tier} onChange={set("tier")}>
+              <option value="free">Free ($0)</option>
+              <option value="paid">Paid</option>
+            </select>
+          </label>
+          <label className="f"><span>Cost Label (e.g. Free ($0) or $150)</span><input value={edit.cost} onChange={set("cost")} required /></label>
+          <label className="f"><span>Role</span>
+            <select value={edit.role} onChange={set("role")}>
+              <option value="sde">Software Engineer (SDE)</option>
+              <option value="cloud">Cloud / AWS / Azure</option>
+              <option value="devops">DevOps / Kubernetes</option>
+              <option value="security">Cyber Security</option>
+              <option value="ai">AI / ML</option>
+              <option value="data">Data Science</option>
+            </select>
+          </label>
+          <label className="f"><span>Sort order</span><input type="number" value={edit.sort_order} onChange={set("sort_order")} /></label>
+        </div>
+        <div className="grid">
+          <label className="f"><span>Official Exam / Credential URL</span><input type="url" value={edit.url} onChange={set("url")} /></label>
+          <label className="f"><span>Free Study Resources / Roadmap URL</span><input type="url" value={edit.resources_url} onChange={set("resources_url")} /></label>
+        </div>
+        <label className="f"><span>Description</span><textarea rows={3} value={edit.description} onChange={set("description")} /></label>
+        <div className="row" style={{ marginTop: 12 }}>
+          <label className="row small"><input type="checkbox" checked={!!edit.published} onChange={set("published")} /> Published on public portal</label>
+          <div className="right row" style={{ gap: 8 }}>
+            <button type="button" className="sm" onClick={() => setEdit(null)}>Cancel</button>
+            <button type="submit" className="sm primary">Save Certification</button>
+          </div>
+        </div>
+      </form>
+    )}
+
+    <table>
+      <thead>
+        <tr>
+          <th>Order</th>
+          <th>Certification</th>
+          <th>Provider</th>
+          <th>Cost</th>
+          <th>Role</th>
+          <th>Links</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {certs.map(c => (
+          <tr key={c.id}>
+            <td>{c.sort_order}</td>
+            <td><b>{c.title}</b><div className="small muted" style={{ maxWidth: 260 }}>{c.description}</div></td>
+            <td>{c.provider}</td>
+            <td><span className={`tag ${c.tier === "free" ? "ok" : ""}`}>{c.cost}</span></td>
+            <td><span className="small">{c.role}</span></td>
+            <td>
+              {c.url && <a href={c.url} target="_blank" rel="noopener noreferrer" className="small">Exam ↗</a>}
+              {c.resources_url && <div><a href={c.resources_url} target="_blank" rel="noopener noreferrer" className="small">Prep ↗</a></div>}
+            </td>
+            <td><span className={`tag ${c.published ? "ok" : ""}`}>{c.published ? "Published" : "Draft"}</span></td>
+            <td>
+              <div className="row" style={{ gap: 6 }}>
+                <button className="sm" onClick={() => setEdit(c)}>Edit</button>
+                <button className="sm err" onClick={() => remove(c.id)}>Delete</button>
+              </div>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </>;
+}
+
+/* ---------------- Legal & Disclaimer Settings Admin CMS ---------------- */
+function SettingsAdmin() {
+  const [s, setS] = useState<{ disclaimer: string; terms: string; privacy: string }>({ disclaimer: "", terms: "", privacy: "" });
+  const [err, setErr] = useState("");
+  const [ok, setOk] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    api("/admin/settings").then(r => setS(r.settings || {})).catch(e => setErr(e.message));
+  }, []);
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault(); setErr(""); setOk(""); setBusy(true);
+    try {
+      await api("/admin/settings", "PUT", s);
+      setOk("Site settings, disclaimer, and legal policies saved successfully.");
+    } catch (x: any) { setErr(x.message); } finally { setBusy(false); }
+  }
+
+  return <form className="card" onSubmit={save}>
+    <h2>Site Legal Content & Disclaimer CMS</h2>
+    <p className="muted small">Customize the official disclaimer, Terms & Conditions, and Privacy Policy presented to users across the platform, signup form, and footer.</p>
+    <Msg>{err}</Msg><Msg kind="ok">{ok}</Msg>
+    <label className="f">
+      <span>Universal Disclaimer (shown in footer, signup consent, and legal notices)</span>
+      <textarea rows={3} value={s.disclaimer || ""} onChange={e => setS({ ...s, disclaimer: e.target.value })} required />
+    </label>
+    <label className="f">
+      <span>Terms and Conditions Content</span>
+      <textarea rows={8} value={s.terms || ""} onChange={e => setS({ ...s, terms: e.target.value })} required />
+    </label>
+    <label className="f">
+      <span>Privacy Policy Content</span>
+      <textarea rows={8} value={s.privacy || ""} onChange={e => setS({ ...s, privacy: e.target.value })} required />
+    </label>
+    <button className="primary" disabled={busy}>{busy ? "Saving..." : "Save Legal Content"}</button>
+  </form>;
 }

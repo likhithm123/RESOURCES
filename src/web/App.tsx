@@ -5,7 +5,7 @@ import { CAREER_ROLES } from "../shared/catalog";
 import Track from "./Track";
 import Reader from "./Reader";
 import Admin from "./Admin";
-import { Library, Links, Connect } from "./Pages";
+import { Library, Links, Connect, Certifications, Feedback, Legal } from "./Pages";
 
 type AuthCtx = { user: User | null; setUser: (u: User | null) => void; refresh: () => Promise<void> };
 const Ctx = createContext<AuthCtx>(null as any);
@@ -35,6 +35,7 @@ export function RoleChips({ value, onChange }: { value: string[]; onChange: (v: 
 function AuthPage({ mode }: { mode: "login" | "signup" | "forgot" }) {
   const { setUser } = useAuth(); const nav = useNavigate();
   const [f, setF] = useState({ name: "", email: "", password: "", code: "", phone: "", roles: ALL_ROLES });
+  const [consent, setConsent] = useState(false);
   const [step, setStep] = useState<"form" | "code">("form");
   const [purpose, setPurpose] = useState("login");
   const [err, setErr] = useState(""); const [info, setInfo] = useState(""); const [busy, setBusy] = useState(false);
@@ -42,6 +43,7 @@ function AuthPage({ mode }: { mode: "login" | "signup" | "forgot" }) {
     setStep("form");
     setErr("");
     setInfo("");
+    setConsent(false);
     if (mode === "signup") setF(prev => ({ ...prev, roles: ALL_ROLES }));
   }, [mode]);
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value });
@@ -94,8 +96,12 @@ function AuthPage({ mode }: { mode: "login" | "signup" | "forgot" }) {
         {mode !== "forgot" && <label className="f"><span>Password {mode === "signup" && "(8+ characters, letters and numbers)"}</span>
           <input type="password" value={f.password} onChange={set("password")} required minLength={8} autoComplete={mode === "signup" ? "new-password" : "current-password"} /></label>}
         {mode === "signup" && <label className="f"><span>Which topics & roles are you preparing for? (all selected by default — click to remove any you don't need)</span><RoleChips value={f.roles} onChange={roles => setF({ ...f, roles })} /></label>}
+        {mode === "signup" && <label className="row small" style={{ marginTop: 14, alignItems: "flex-start", gap: 10, cursor: "pointer" }}>
+          <input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} required style={{ marginTop: 2 }} />
+          <span>I understand this is an independent study preparation resource (not affiliated with any company or certification body, with no legal liability for content accuracy). I agree to the <Link to="/terms" target="_blank" style={{ textDecoration: "underline" }}>Terms & Conditions</Link> and <Link to="/privacy" target="_blank" style={{ textDecoration: "underline" }}>Privacy Policy</Link>.</span>
+        </label>}
         <div style={{ display: "flex", justifyContent: "center", marginTop: 20 }}>
-          <button className={mode === "signup" ? "btn-signup" : "primary"} disabled={busy} style={mode === "signup" ? { minWidth: 240 } : undefined}>
+          <button className={mode === "signup" ? "btn-signup" : "primary"} disabled={busy || (mode === "signup" && !consent)} style={mode === "signup" ? { minWidth: 240 } : undefined}>
             {busy ? "Please wait..." : mode === "signup" ? "Send verification code" : mode === "login" ? "Continue" : "Send reset code"}
           </button>
         </div>
@@ -164,10 +170,17 @@ function WebTeam() {
 
 function Footer() {
   return <footer className="footer">
-    <div>Built for students preparing for software, AI, data, cloud and security roles.</div>
-    <div className="team">
+    <div className="small muted" style={{ maxWidth: 760, margin: "0 auto 12px", lineHeight: 1.5, textAlign: "center" }}>
+      <b>Disclaimer:</b> Resources Portal is an independent educational prep resource and is not affiliated with, endorsed by, or representing any company, official certification provider, or institution. We do not hold any legal responsibility for the content; materials are provided as-is for self-study and interview preparation.
+    </div>
+    <div className="row" style={{ justifyContent: "center", gap: 18, flexWrap: "wrap", marginBottom: 8 }}>
+      <Link to="/terms">Terms & Conditions</Link>
+      <Link to="/privacy">Privacy Policy</Link>
+      <Link to="/feedback">Suggestions & Feedback</Link>
+      <Link to="/certifications">Certifications</Link>
       <Link to="/webteam" style={{ fontWeight: 600 }}>Brought to you by</Link>
     </div>
+    <div className="small muted" style={{ textAlign: "center" }}>Built for students preparing for software, AI, data, cloud and security roles.</div>
   </footer>;
 }
 
@@ -185,6 +198,7 @@ export default function App() {
       {user && <>
         <NavLink to="/" end className={tab}>Track sheet</NavLink>
         <NavLink to="/library" className={tab}>Notes</NavLink>
+        <NavLink to="/certifications" className={tab}>Certifications</NavLink>
         <NavLink to="/resources" className={tab}>Resources</NavLink>
         <NavLink to="/projects" className={tab}>Projects</NavLink>
         <NavLink to="/connect" className={tab}>Connect</NavLink>
@@ -203,6 +217,10 @@ export default function App() {
         <Route path="/" element={guard(user && !user.career_roles.length ? <Navigate to="/plan" replace /> : <Track />)} />
         <Route path="/plan" element={guard(<Plan />)} />
         <Route path="/library" element={guard(<Library />)} />
+        <Route path="/certifications" element={<Certifications />} />
+        <Route path="/feedback" element={<Feedback />} />
+        <Route path="/terms" element={<Legal type="terms" />} />
+        <Route path="/privacy" element={<Legal type="privacy" />} />
         <Route path="/resources" element={guard(<Links kind="resource" />)} />
         <Route path="/projects" element={guard(<Links kind="project" />)} />
         <Route path="/connect" element={guard(<Connect />)} />

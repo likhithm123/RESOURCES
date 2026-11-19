@@ -110,3 +110,36 @@ CREATE TABLE IF NOT EXISTS rp_doc_pages (
   boxes TEXT NOT NULL DEFAULT '[]',
   PRIMARY KEY (doc_id, page)
 );
+-- User feedback and suggestions (triggers admin email & shows in admin CMS)
+CREATE TABLE IF NOT EXISTS rp_feedback (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER,
+  name TEXT NOT NULL DEFAULT '',
+  email TEXT NOT NULL DEFAULT '',
+  category TEXT NOT NULL DEFAULT 'suggestion',
+  message TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'new',
+  admin_reply TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+-- Curated high-value certifications (free & paid with links, manageable via admin CMS)
+CREATE TABLE IF NOT EXISTS rp_certifications (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  provider TEXT NOT NULL,
+  tier TEXT NOT NULL DEFAULT 'free',
+  cost TEXT NOT NULL DEFAULT 'Free',
+  role TEXT NOT NULL DEFAULT 'sde',
+  url TEXT NOT NULL DEFAULT '',
+  resources_url TEXT NOT NULL DEFAULT '',
+  description TEXT NOT NULL DEFAULT '',
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  published INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+-- Site settings & legal content (editable via admin CMS)
+CREATE TABLE IF NOT EXISTS rp_site_settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL DEFAULT '',
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);

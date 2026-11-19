@@ -25,7 +25,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
             {this.state.error}
           </pre>
           <button
-            onClick={() => { window.location.href = "/"; }}
+            onClick={() => { window.location.href = "/?_t=" + Date.now(); }}
             style={{ marginTop: 16, padding: "8px 16px", background: "#1b3fae", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer" }}
           >
             Reload Home

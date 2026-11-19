@@ -34,15 +34,15 @@ const allUrls = [...STATIC_ROUTES, ...NOTEBOOK_ROUTES];
 const sitemapXml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${allUrls
-  .map(
-    u => `  <url>
+    .map(
+      u => `  <url>
     <loc>${SITE_URL}${u.path}</loc>
     <lastmod>${today}</lastmod>
     <changefreq>${u.changefreq}</changefreq>
     <priority>${u.priority}</priority>
   </url>`
-  )
-  .join("\n")}
+    )
+    .join("\n")}
 </urlset>
 `;
 

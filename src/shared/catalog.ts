@@ -52,6 +52,7 @@ export const NOTEBOOKS: Notebook[] = [
   { slug: "36-php-and-modern-backend", title: "Modern PHP 8.x, Laravel and Web Architecture", roles: ["fullstack", "sde"] },
   { slug: "37-top-tech-certifications-guide", title: "Valuable Tech Certifications Guide (Free & Paid)", roles: ALL },
   { slug: "38-claude-101", title: "Claude 101: The Comprehensive Anthropic AI Guide", roles: ["ai", "ml", "sde", "fullstack"] },
+  { slug: "39-quantum-computing", title: "Quantum Computing: Qubits, Circuits & Algorithms", roles: ["ai", "ml", "sde", "security"] },
 ];
 
 export const roleLabel = (id: string) => CAREER_ROLES.find(r => r.id === id)?.label || id;

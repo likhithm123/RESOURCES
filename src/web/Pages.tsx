@@ -8,7 +8,7 @@ import { CAREER_ROLES, roleLabel } from "../shared/catalog";
 export function Library() {
   const { user } = useAuth(); const [docs, setDocs] = useState<Doc[] | null>(null); const [all, setAll] = useState(false); const [err, setErr] = useState("");
   useEffect(() => { api("/docs").then(r => setDocs(r.docs)).catch(e => setErr(e.message)); }, []);
-  const shown = (docs || []).filter(d => all || !d.career_roles.length || d.career_roles.some(r => user!.career_roles.includes(r)));
+  const shown = (docs || []).filter(d => all || !d.career_roles.length || (user ? d.career_roles.some(r => user.career_roles.includes(r)) : true));
   return <>
     <div className="row"><h1 style={{ flex: 1 }}>Notes</h1><label className="row small"><input type="checkbox" checked={all} onChange={e => setAll(e.target.checked)} /> Show notes for all roles</label></div>
     <p className="muted">Handwritten-style notebooks for each role.</p>
@@ -31,7 +31,7 @@ export function Links({ kind }: { kind: "resource" | "project" }) {
       <select style={{ width: 240 }} value={role} onChange={e => setRole(e.target.value)} aria-label="Filter by role"><option value="">All roles</option>{CAREER_ROLES.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}</select></div>
     <p className="muted">{kind === "resource" ? "Hand-picked links: practice sheets, docs, videos and tools." : "Project ideas that add real weight to a resume, with what to build and what you will learn."}</p>
     <Msg>{err}</Msg>
-    {links && !shown.length && <div className="card">Nothing here yet{user!.role === "admin" ? " - add some from the Admin tab." : "."}</div>}
+    {links && !shown.length && <div className="card">Nothing here yet{user?.role === "admin" ? " - add some from the Admin tab." : "."}</div>}
     {groups.map(g => <div key={g}><h2 style={{ marginTop: 18 }}>{g}</h2><div className="grid">{shown.filter(l => (l.category || "General") === g).map(l =>
       <div className="card" key={l.id} style={{ marginBottom: 0 }}>
         <h3>{l.title}</h3>

@@ -92,5 +92,47 @@ export const db = {
         );
       }
     }
+
+    // Seed resources and projects if rp_links is empty
+    const linkCount = await this.first("SELECT COUNT(*) as n FROM rp_links");
+    if (!linkCount || linkCount.n === 0) {
+      const defaultLinks = [
+        // Resources: DSA & Practice
+        { kind: "resource", title: "takeUforward - Strivers A2Z DSA Sheet", category: "DSA & Coding Practice", url: "https://takeuforward.org/strivers-a2z-dsa-sheet-step-by-step-entire-dsa-track", description: "The most widely recommended step-by-step DSA preparation track covering basic maths up to advanced dynamic programming and graphs.", career_roles: '["sde", "fullstack", "ai", "ml"]', sort_order: 1 },
+        { kind: "resource", title: "NeetCode 150 Practice Roadmap", category: "DSA & Coding Practice", url: "https://neetcode.io/practice", description: "Hand-picked collection of 150 essential coding interview problems categorized by pattern (sliding window, two pointers, trees, graphs).", career_roles: '["sde", "fullstack", "ai", "ml"]', sort_order: 2 },
+        { kind: "resource", title: "LeetCode Problemset", category: "DSA & Coding Practice", url: "https://leetcode.com/problemset/all/", description: "The premier platform for technical interview question practice, company tags, and weekly algorithmic contests.", career_roles: '["sde", "fullstack", "ai", "ml"]', sort_order: 3 },
+        { kind: "resource", title: "Visualgo - Data Structure Visualizations", category: "DSA & Coding Practice", url: "https://visualgo.net/en", description: "Interactive animations of sorting algorithms, BST operations, AVL rotations, graph traversals, and heaps.", career_roles: '["sde", "fullstack", "ai", "ml"]', sort_order: 4 },
+
+        // Resources: System Design
+        { kind: "resource", title: "System Design Primer by Donne Martin", category: "System Design & Architecture", url: "https://github.com/donnemartin/system-design-primer", description: "Comprehensive open-source study guide covering scalability, caching, load balancing, databases, sharding, and real interview blueprints.", career_roles: '["sde", "fullstack", "devops", "ai"]', sort_order: 5 },
+        { kind: "resource", title: "ByteByteGo - Visual System Design", category: "System Design & Architecture", url: "https://bytebytego.com/", description: "Visual guides, newsletter breakdowns, and architectural diagrams covering modern distributed systems at scale.", career_roles: '["sde", "fullstack", "devops"]', sort_order: 6 },
+        { kind: "resource", title: "High Scalability Real-World Architectures", category: "System Design & Architecture", url: "http://highscalability.com/", description: "Case studies on how real tech giants (Netflix, Uber, Amazon, YouTube) architect and scale their production platforms.", career_roles: '["sde", "fullstack", "devops"]', sort_order: 7 },
+
+        // Resources: Web & Full Stack
+        { kind: "resource", title: "MDN Web Docs (Mozilla)", category: "Web & Full Stack", url: "https://developer.mozilla.org/", description: "Authoritative technical reference and documentation for HTML5, CSS3, modern JavaScript, and browser Web APIs.", career_roles: '["fullstack", "sde"]', sort_order: 8 },
+        { kind: "resource", title: "roadmap.sh - Developer Roadmaps", category: "Web & Full Stack", url: "https://roadmap.sh/", description: "Community-driven visual step-by-step roadmaps for Frontend, Backend, DevOps, Cyber Security, and AI roles.", career_roles: '["fullstack", "sde", "devops", "security", "ai"]', sort_order: 9 },
+
+        // Resources: DevOps & Cloud
+        { kind: "resource", title: "Official Kubernetes Documentation", category: "DevOps & Cloud", url: "https://kubernetes.io/docs/home/", description: "Official documentation and tutorials for pods, services, ingress, deployments, and cluster administration.", career_roles: '["devops", "sde", "cloud", "security"]', sort_order: 10 },
+        { kind: "resource", title: "AWS Skill Builder & Documentation", category: "DevOps & Cloud", url: "https://aws.amazon.com/skillbuilder/", description: "Free learning plans, architectural whitepapers, and official documentation for all core AWS cloud services.", career_roles: '["devops", "cloud", "sde", "data"]', sort_order: 11 },
+
+        // Resources: Cyber Security
+        { kind: "resource", title: "OWASP Top 10 Web Security Risks", category: "Cyber Security", url: "https://owasp.org/www-project-top-ten/", description: "The standard awareness document for developers representing the most critical security risks to web applications.", career_roles: '["security", "devops", "sde", "fullstack"]', sort_order: 12 },
+        { kind: "resource", title: "PortSwigger Web Security Academy", category: "Cyber Security", url: "https://portswigger.net/web-security", description: "Free, interactive hands-on labs covering SQL injection, XSS, CSRF, SSRF, and modern web application security.", career_roles: '["security", "sde", "fullstack"]', sort_order: 13 },
+
+        // Projects
+        { kind: "project", title: "Full-Stack Microservices E-Commerce with Stripe", category: "Full Stack & Web", url: "https://github.com", description: "Production-grade e-commerce application featuring product catalog, shopping cart state management, checkout with Stripe webhooks, JWT auth, and order tracking.", career_roles: '["fullstack", "sde"]', sort_order: 1 },
+        { kind: "project", title: "Distributed Collaborative Document Editor (Google Docs Clone)", category: "System Design & Distributed Systems", url: "https://github.com", description: "Real-time collaborative text editor implementing Conflict-Free Replicated Data Types (CRDTs) over WebSockets with Redis Pub/Sub.", career_roles: '["sde", "fullstack"]', sort_order: 2 },
+        { kind: "project", title: "Enterprise Grounded RAG Assistant with Hybrid Search", category: "AI & GenAI", url: "https://github.com", description: "Private enterprise document question-answering system using LangChain, pgvector/Qdrant, hybrid dense+sparse BM25 retrieval, cross-encoder reranking, and citation grounding.", career_roles: '["ai", "ml", "sde"]', sort_order: 3 },
+        { kind: "project", title: "Cloud-Native GitOps Kubernetes Deployment with Terraform", category: "DevOps & Cloud", url: "https://github.com", description: "Automated infrastructure provisioning via Terraform on AWS EKS, monitored by Prometheus/Grafana with zero-downtime canary rollouts via ArgoCD.", career_roles: '["devops", "sde"]', sort_order: 4 },
+        { kind: "project", title: "Web Application Firewall (WAF) & Rate Limiting Reverse Proxy", category: "Cyber Security & Systems", url: "https://github.com", description: "Reverse proxy built in Go or Rust inspecting HTTP traffic, rate limiting by IP/token bucket, and blocking OWASP Top 10 attacks.", career_roles: '["security", "devops", "sde"]', sort_order: 5 }
+      ];
+      for (const l of defaultLinks) {
+        await this.run(
+          "INSERT INTO rp_links (kind, title, category, url, description, career_roles, sort_order, published) VALUES (?, ?, ?, ?, ?, ?, ?, 1)",
+          [l.kind, l.title, l.category, l.url, l.description, l.career_roles, l.sort_order]
+        );
+      }
+    }
   },
 };

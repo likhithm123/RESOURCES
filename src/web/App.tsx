@@ -195,7 +195,7 @@ export default function App() {
   return <Ctx.Provider value={{ user, setUser, refresh }}>
     <header className="nav"><div className="nav-in">
       <Link to="/" className="brand">Resources Portal</Link>
-      {user && <>
+      {user ? <>
         <NavLink to="/" end className={tab}>Track sheet</NavLink>
         <NavLink to="/library" className={tab}>Notes</NavLink>
         <NavLink to="/certifications" className={tab}>Certifications</NavLink>
@@ -206,6 +206,15 @@ export default function App() {
         <span className="right small muted">{user.name}</span>
         <NavLink to="/plan" className={tab}>My plan</NavLink>
         <button className="sm" onClick={async () => { await api("/auth/logout", "POST", {}); setUser(null); nav("/login"); }}>Sign out</button>
+      </> : <>
+        <NavLink to="/library" className={tab}>Notes</NavLink>
+        <NavLink to="/certifications" className={tab}>Certifications</NavLink>
+        <NavLink to="/resources" className={tab}>Resources</NavLink>
+        <NavLink to="/projects" className={tab}>Projects</NavLink>
+        <div className="right row" style={{ gap: 8 }}>
+          <Link to="/login" className="btn sm">Sign in</Link>
+          <Link to="/signup" className="btn sm btn-signup">Sign up</Link>
+        </div>
       </>}
     </div></header>
     <Routes>
@@ -216,13 +225,13 @@ export default function App() {
         <Route path="/forgot" element={<AuthPage mode="forgot" />} />
         <Route path="/" element={guard(user && !user.career_roles.length ? <Navigate to="/plan" replace /> : <Track />)} />
         <Route path="/plan" element={guard(<Plan />)} />
-        <Route path="/library" element={guard(<Library />)} />
+        <Route path="/library" element={<Library />} />
         <Route path="/certifications" element={<Certifications />} />
         <Route path="/feedback" element={<Feedback />} />
         <Route path="/terms" element={<Legal type="terms" />} />
         <Route path="/privacy" element={<Legal type="privacy" />} />
-        <Route path="/resources" element={guard(<Links kind="resource" />)} />
-        <Route path="/projects" element={guard(<Links kind="project" />)} />
+        <Route path="/resources" element={<Links kind="resource" />} />
+        <Route path="/projects" element={<Links kind="project" />} />
         <Route path="/connect" element={guard(<Connect />)} />
         <Route path="/admin/*" element={guard(user?.role === "admin" ? <Admin /> : <Navigate to="/" replace />)} />
         <Route path="/webteam" element={<WebTeam />} />

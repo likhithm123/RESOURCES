@@ -260,7 +260,6 @@ app.get("/docs/:slug/search", async c => {
 /* ---------------- Resources / projects (links) ---------------- */
 const linkView = l => ({ ...l, career_roles: parse(l.career_roles, []), published: !!l.published });
 app.get("/links", async c => {
-  auth(c);
   return c.json({ links: (await db.all("SELECT * FROM rp_links WHERE published = 1 ORDER BY kind, sort_order, id")).map(linkView) });
 });
 

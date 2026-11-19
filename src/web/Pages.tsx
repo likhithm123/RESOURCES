@@ -6,22 +6,55 @@ import { useAuth, Msg } from "./App";
 import { CAREER_ROLES, roleLabel } from "../shared/catalog";
 
 export function Library() {
-  const { user } = useAuth(); const [docs, setDocs] = useState<Doc[] | null>(null); const [all, setAll] = useState(false); const [err, setErr] = useState("");
-  useEffect(() => { api("/docs").then(r => setDocs(r.docs)).catch(e => setErr(e.message)); }, []);
-  const shown = (docs || []).filter(d => all || !d.career_roles.length || (user ? d.career_roles.some(r => user.career_roles.includes(r)) : true));
+  const { user } = useAuth();
+  const [docs, setDocs] = useState<Doc[] | null>(null);
+  const [all, setAll] = useState(false);
+  const [edition, setEdition] = useState<"all" | "short" | "long">("all");
+  const [err, setErr] = useState("");
+
+  useEffect(() => {
+    api("/docs").then(r => setDocs(r.docs)).catch(e => setErr(e.message));
+  }, []);
+
+  const isMaster = (d: Doc) => d.slug.includes("-master") || d.slug.includes("-long");
+
+  const shown = (docs || []).filter(d => {
+    if (edition === "short" && isMaster(d)) return false;
+    if (edition === "long" && !isMaster(d) && d.slug !== "11-dsa-a2z-solutions") return false;
+    return all || !d.career_roles.length || (user ? d.career_roles.some(r => user.career_roles.includes(r)) : true);
+  });
+
   return <>
-    <div className="row"><h1 style={{ flex: 1 }}>Notes</h1><label className="row small"><input type="checkbox" checked={all} onChange={e => setAll(e.target.checked)} /> Show notes for all roles</label></div>
-    <p className="muted">Handwritten-style notebooks for each role.</p>
+    <div className="row" style={{ flexWrap: "wrap", gap: 12, alignItems: "center" }}>
+      <h1 style={{ flex: 1, margin: 0 }}>Notes Library</h1>
+      <label className="row small"><input type="checkbox" checked={all} onChange={e => setAll(e.target.checked)} /> Show all roles</label>
+    </div>
+    <div className="row" style={{ gap: 8, margin: "14px 0 8px", flexWrap: "wrap" }}>
+      <button type="button" className={`btn sm ${edition === "all" ? "primary" : ""}`} onClick={() => setEdition("all")}>All Editions</button>
+      <button type="button" className={`btn sm ${edition === "short" ? "primary" : ""}`} onClick={() => setEdition("short")}>⚡ Quick Revision (38 Notebooks)</button>
+      <button type="button" className={`btn sm ${edition === "long" ? "primary" : ""}`} onClick={() => setEdition("long")}>📚 Long-Form Master Editions (100–315+ Pages)</button>
+    </div>
+    <p className="muted">Handwritten-style quick revision notebooks and long-form comprehensive deep-dive master editions.</p>
     <Msg>{err}</Msg>
-    {docs && !shown.length && <div className="card">No notes published for your roles yet.</div>}
-    <div className="grid">{shown.map(d => <div className="card" key={d.id} style={{ marginBottom: 0 }}>
-      <h3>{d.title}</h3><p className="small muted">{d.description || `${d.pages} pages`}</p>
-      <div className="row" style={{ gap: 8, alignItems: "center" }}>
-        <Link className="btn primary sm" to={`/read/${d.slug}`}>Read</Link>
-        <a className="btn sm" href={`https://ik.imagekit.io/likhi/resources-portal/pdfs/${d.slug}.pdf`} target="_blank" rel="noopener noreferrer" title="Direct PDF via ImageKit">PDF ↗</a>
-        <span className="small muted">{d.pages} pages</span>
-      </div>
-    </div>)}</div>
+    {docs && !shown.length && <div className="card">No notes found for this filter.</div>}
+    <div className="grid">{shown.map(d => {
+      const isL = isMaster(d);
+      const pdfUrl = isL
+        ? `https://ik.imagekit.io/likhi/resources-portal/long-pdfs/${d.slug}.pdf`
+        : `https://ik.imagekit.io/likhi/resources-portal/pdfs/${d.slug}.pdf`;
+      return <div className="card" key={d.id} style={{ marginBottom: 0, borderColor: isL ? "var(--ink)" : undefined }}>
+        <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+          <h3 style={{ margin: 0 }}>{d.title}</h3>
+          {isL && <span className="tag" style={{ background: "#e8f5e9", color: "#1b5e20", fontWeight: 700, fontSize: 11 }}>Master Edition</span>}
+        </div>
+        <p className="small muted" style={{ marginTop: 8 }}>{d.description || `${d.pages} pages`}</p>
+        <div className="row" style={{ gap: 8, alignItems: "center", marginTop: 12 }}>
+          <Link className="btn primary sm" to={`/read/${d.slug}`}>Read</Link>
+          <a className="btn sm" href={pdfUrl} target="_blank" rel="noopener noreferrer" title="Direct PDF via ImageKit">PDF ↗</a>
+          <span className="small muted" style={{ fontWeight: 600 }}>{d.pages} pages</span>
+        </div>
+      </div>;
+    })}</div>
   </>;
 }
 

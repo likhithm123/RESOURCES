@@ -225,6 +225,9 @@ export default function Reader() {
   const width = Math.round(820 * zoom);
   const target = meta ? (MOBILE ? Math.min(meta.pages, PREFETCH_RADIUS * 2 + 1) : meta.pages) : 1;
   const pct = Math.min(100, Math.round((100 * cachedCount) / target));
+  const pdfUrl = slug && (slug.includes("-master") || slug.includes("-long"))
+    ? `https://ik.imagekit.io/likhi/resources-portal/long-pdfs/${slug}.pdf`
+    : `https://ik.imagekit.io/likhi/resources-portal/pdfs/${slug}.pdf`;
   return <>
     <div className="reader-bar">
       <Link to="/" className="btn sm" aria-label="Back to track sheet">←<span className="hide-sm"> Track sheet</span></Link>
@@ -237,7 +240,7 @@ export default function Reader() {
         <button className="sm hide-sm" onClick={() => setZoom(z => Math.max(0.6, +(z - 0.15).toFixed(2)))} aria-label="Zoom out">−</button>
         <button className="sm hide-sm" onClick={() => setZoom(z => Math.min(2, +(z + 0.15).toFixed(2)))} aria-label="Zoom in">+</button>
         <button className={`sm ${showSearch ? "primary" : ""}`} onClick={() => { setShowSearch(s => !s); setTimeout(() => document.getElementById("doc-search")?.focus(), 30); }} aria-label="Search in document">🔍<span className="hide-sm"> Search</span></button>
-        <a className="btn sm hide-sm" href={`https://ik.imagekit.io/likhi/resources-portal/pdfs/${slug}.pdf`} target="_blank" rel="noopener noreferrer" title="Direct PDF via ImageKit">📥 PDF</a>
+        <a className="btn sm hide-sm" href={pdfUrl} target="_blank" rel="noopener noreferrer" title="Direct PDF via ImageKit">📥 PDF</a>
         {pct < 100 && <span className="small muted hide-sm" title="Pages ready for instant scrolling">{pct}% loaded</span>}
       </>}
     </div>

@@ -5,7 +5,9 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const dir = join(here, "..", "..", "notes", "content");
+const dir = existsSync(join(here, "..", "..", "notes", "content"))
+  ? join(here, "..", "..", "notes", "content")
+  : join(here, "..", "notes", "content");
 const out = join(here, "..", "src", "shared", "topics.json");
 const slugify = s => s.toLowerCase().replace(/\*\*|`/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60);
 

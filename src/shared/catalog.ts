@@ -46,6 +46,7 @@ export const NOTEBOOKS: Notebook[] = [
   { slug: "30-projects-for-every-role", title: "Resume Projects for Every Role", roles: ALL },
   { slug: "31-full-stack-development", title: "Full Stack Development", roles: ["fullstack", "sde"] },
   { slug: "32-hr-interview-self-introduction", title: "HR Interview, Self Introduction and Behavioural Questions", roles: ALL },
+  { slug: "33-forward-deployed-engineer", title: "Forward Deployed Engineer (FDE) Role Guide", roles: ["sde", "fullstack", "ai", "data", "devops"] },
 ];
 
 export const roleLabel = (id: string) => CAREER_ROLES.find(r => r.id === id)?.label || id;

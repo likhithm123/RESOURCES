@@ -47,6 +47,34 @@ export default function Track() {
   const total = all.length, finished = all.filter(i => done.has(i.id)).length;
   const needle = q.trim().toLowerCase();
 
+  // Search ranking: bring notebooks, sections, and items with matching topics to the top
+  const sortedMine = useMemo(() => {
+    if (!needle) return mine;
+    const scored = mine.map(nb => {
+      const sections = TOPICS[nb.slug]?.sections || [];
+      let count = 0;
+      if (nb.title.toLowerCase().includes(needle)) count += 50;
+      for (const sec of sections) {
+        if (sec.title.toLowerCase().includes(needle)) count += 10;
+        for (const it of sec.items) {
+          if (it.title.toLowerCase().includes(needle)) count += 1;
+        }
+      }
+      return { nb, count };
+    });
+    return [...scored].sort((a, b) => b.count - a.count).map(x => x.nb);
+  }, [mine, needle]);
+
+  const otherMatchingNotebooks = useMemo(() => {
+    if (!needle) return [];
+    const mineSlugs = new Set(mine.map(m => m.slug));
+    return NOTEBOOKS.filter(nb => !mineSlugs.has(nb.slug)).filter(nb => {
+      if (nb.title.toLowerCase().includes(needle)) return true;
+      const sections = TOPICS[nb.slug]?.sections || [];
+      return sections.some(s => s.title.toLowerCase().includes(needle) || s.items.some(i => i.title.toLowerCase().includes(needle)));
+    });
+  }, [mine, needle]);
+
   return <>
     <div className="card">
       <div className="row"><div style={{ flex: 1, minWidth: 220 }}>
@@ -69,29 +97,61 @@ export default function Track() {
     </div>
     <Msg>{err}</Msg>
     <div className="row" style={{ marginBottom: 12 }}>
-      <input placeholder="Search a topic or problem (e.g. binary search, joins, kafka)" value={q} onChange={e => setQ(e.target.value)} style={{ flex: 1, minWidth: 220 }} aria-label="Search topics" />
+      <input placeholder="Search a topic or problem (e.g. binary search, joins, kafka, kubernetes)" value={q} onChange={e => setQ(e.target.value)} style={{ flex: 1, minWidth: 220 }} aria-label="Search topics" />
       <label className="row small"><input type="checkbox" checked={hideDone} onChange={e => setHideDone(e.target.checked)} /> Hide completed</label>
       <button className="sm" onClick={() => setEdit(!edit)}>{edit ? "Done customising" : "Customise notebooks"}</button>
     </div>
+    {needle && otherMatchingNotebooks.length > 0 && (
+      <div className="card small" style={{ marginBottom: 14, background: "var(--bg-subtle, #f8f9fa)" }}>
+        <span className="muted">Matches also found in other notebooks: </span>
+        {otherMatchingNotebooks.map(nb => (
+          <button key={nb.slug} className="sm" style={{ marginLeft: 6, marginTop: 4 }} onClick={() => toggleNotebook(nb.slug, true)}>
+            + Add {nb.title} to sheet
+          </button>
+        ))}
+      </div>
+    )}
     {edit && <div className="card"><h2>Notebooks on my sheet</h2><div className="chips">{NOTEBOOKS.map(nb => {
       const on = mine.includes(nb);
       return <span key={nb.slug} className={`chip ${on ? "on" : ""}`} onClick={() => toggleNotebook(nb.slug, !on)}>{nb.title}</span>;
     })}</div></div>}
 
-    {mine.map(nb => {
-      const sections = TOPICS[nb.slug]?.sections || [];
+    {sortedMine.map(nb => {
+      const rawSections = TOPICS[nb.slug]?.sections || [];
+      const sections = needle ? [...rawSections].sort((a, b) => {
+        const scoreSec = (s: Section) => {
+          let score = s.title.toLowerCase().includes(needle) ? 10 : 0;
+          for (const it of s.items) {
+            if (it.title.toLowerCase().includes(needle)) score += 2;
+          }
+          return score;
+        };
+        return scoreSec(b) - scoreSec(a);
+      }) : rawSections;
+
       const items = sections.flatMap(s => s.items); const d = items.filter(i => done.has(i.id)).length;
-      const doc = docs[nb.slug]; const isOpen = open.has(nb.slug) || !!needle;
+      const matchingItemsCount = needle ? items.filter(i => i.title.toLowerCase().includes(needle) || sections.some(s => s.items.includes(i) && s.title.toLowerCase().includes(needle))).length : 0;
+      const isOpen = open.has(nb.slug) || (!!needle && matchingItemsCount > 0);
       const read = (page?: number, itemId?: string) => `/read/${nb.slug}${page ? `?page=${page}` : ""}${itemId ? `${page ? "&" : "?"}item=${encodeURIComponent(itemId)}` : ""}`;
       return <div className="nb" key={nb.slug}>
         <div className="nb-head" onClick={() => flip(nb.slug)} role="button" aria-expanded={isOpen}>
           <span className="caret">{isOpen ? "▾" : "▸"}</span>
-          <div style={{ flex: 1, minWidth: 160 }}><h3>{nb.title}</h3><div className="small muted">{items.length ? `${d} / ${items.length} done` : "Notes coming soon"}</div></div>
+          <div style={{ flex: 1, minWidth: 160 }}>
+            <h3>{nb.title} {needle && matchingItemsCount > 0 && <span className="chip on small" style={{ fontSize: 11, verticalAlign: "middle", marginLeft: 6 }}>{matchingItemsCount} match{matchingItemsCount !== 1 ? "es" : ""}</span>}</h3>
+            <div className="small muted">{items.length ? `${d} / ${items.length} done` : "Notes coming soon"}</div>
+          </div>
           <div className="row" style={{ width: 220 }}><Bar d={d} n={items.length} /></div>
           {doc && <Link className="btn sm" to={read()} onClick={e => e.stopPropagation()}>Open notes</Link>}
         </div>
         {isOpen && sections.map(sec => {
-          const shown = sec.items.filter(i => (!needle || i.title.toLowerCase().includes(needle) || sec.title.toLowerCase().includes(needle)) && !(hideDone && done.has(i.id)));
+          const shown = sec.items
+            .filter(i => (!needle || i.title.toLowerCase().includes(needle) || sec.title.toLowerCase().includes(needle)) && !(hideDone && done.has(i.id)))
+            .sort((a, b) => {
+              if (!needle) return 0;
+              const aM = a.title.toLowerCase().includes(needle) ? 1 : 0;
+              const bM = b.title.toLowerCase().includes(needle) ? 1 : 0;
+              return bM - aM;
+            });
           if (!shown.length) return null;
           const sd = sec.items.filter(i => done.has(i.id)).length; const sOpen = open.has(sec.id) || !!needle;
           return <div className="sec" key={sec.id}>

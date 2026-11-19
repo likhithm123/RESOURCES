@@ -23,6 +23,7 @@
   - System Design (HLD & LLD), Operating Systems, Computer Networks
   - Machine Learning, Deep Learning, GenAI & LLMs (LangChain, LangGraph, Agents, FastAPI)
   - DevOps (Docker, Kubernetes, Terraform, CI/CD Pipelines), Cyber Security, REST APIs, Rust, and Full Stack Development.
+  - Forward Deployed Engineer (FDE) Role Guide: enterprise systems, air-gapped deployments, grounded RAG, data archaeology, client scenarios.
 - **Track Sheet & Day-Wise Streaks:**
   - Real-time syllabus tracker tailored to selected career roles (SDE, Full Stack, AI, ML, Data Science, DevOps, Security, Salesforce).
   - Tracks individual subtopic completion percentage and records daily study streaks.

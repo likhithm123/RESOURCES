@@ -187,7 +187,6 @@ app.post("/progress", async c => {
 /* ---------------- Documents and the protected viewer ---------------- */
 const docView = d => ({ id: d.id, slug: d.slug, title: d.title, description: d.description, career_roles: parse(d.career_roles, []), pages: d.pages, sort_order: d.sort_order, published: !!d.published, updated_at: d.updated_at });
 app.get("/docs", async c => {
-  auth(c);
   return c.json({ docs: (await db.all("SELECT * FROM rp_documents WHERE published = 1 ORDER BY sort_order, slug")).map(docView) });
 });
 const signView = payload => { const p = Buffer.from(JSON.stringify(payload)).toString("base64url"); return `${p}.${hmacHex("sha256", secret(), "view:" + p)}`; };

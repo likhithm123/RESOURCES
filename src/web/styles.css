@@ -723,6 +723,10 @@ input.page-input,
 }
 
 @media (max-width: 640px) {
+    .hide-sm {
+        display: none !important;
+    }
+
     .item {
         padding-left: 22px;
     }

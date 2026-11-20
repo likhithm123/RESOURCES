@@ -23,23 +23,41 @@ export default function Track() {
   const [open, setOpen] = useState<Set<string>>(new Set());
   const [q, setQ] = useState(""); const [hideDone, setHideDone] = useState(false); const [err, setErr] = useState(""); const [edit, setEdit] = useState(false);
   useEffect(() => {
-    api("/progress").then(r => {
-      setDone(new Set(r.done));
-      if (r.streak) setStreak(r.streak);
-    }).catch(e => setErr(e.message));
+    if (user) {
+      api("/progress").then(r => {
+        setDone(new Set(r.done));
+        if (r.streak) setStreak(r.streak);
+      }).catch(e => setErr(e.message));
+    } else {
+      try {
+        const saved = localStorage.getItem("rp_guest_done");
+        if (saved) setDone(new Set(JSON.parse(saved)));
+      } catch { }
+    }
     api("/docs").then(r => setDocs(Object.fromEntries(r.docs.map((d: Doc) => [d.slug, d])))).catch(() => { });
-  }, []);
+  }, [user]);
 
-  // plan = explicit list of notebook slugs; "-slug" hides one suggested by the roles.
-  const plan = user?.plan || [];
-  const mine = useMemo(() => NOTEBOOKS.filter(nb =>
-    plan.includes(nb.slug) || (nb.roles.some(r => (user?.career_roles || []).includes(r)) && !plan.includes("-" + nb.slug))), [user]);
+  // If logged in, show notebooks matching user roles / plan. If guest, show all 39 notebooks.
+  const mine = useMemo(() => {
+    if (!user) return NOTEBOOKS;
+    const plan = user.plan || [];
+    return NOTEBOOKS.filter(nb =>
+      plan.includes(nb.slug) || (nb.roles.some(r => (user.career_roles || []).includes(r)) && !plan.includes("-" + nb.slug)));
+  }, [user]);
+
   async function toggleNotebook(slug: string, show: boolean) {
+    if (!user) return;
+    const plan = user.plan || [];
     const next = plan.filter(x => x !== slug && x !== "-" + slug); next.push(show ? slug : "-" + slug);
-    await api("/me", "PUT", { name: user!.name, career_roles: user!.career_roles, plan: next }); await refresh();
+    await api("/me", "PUT", { name: user.name, career_roles: user.career_roles, plan: next }); await refresh();
   }
+
   async function mark(ids: string[], value: boolean) {
-    const next = new Set(done); ids.forEach(id => (value ? next.add(id) : next.delete(id))); setDone(next);     // optimistic
+    const next = new Set(done); ids.forEach(id => (value ? next.add(id) : next.delete(id))); setDone(next);
+    if (!user) {
+      try { localStorage.setItem("rp_guest_done", JSON.stringify([...next])); } catch { }
+      return;
+    }
     try { await api("/progress", "POST", { items: ids, done: value }); } catch (e: any) { setErr(e.message); }
   }
   const flip = (id: string) => setOpen(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -79,7 +97,7 @@ export default function Track() {
     <div className="card">
       <div className="row"><div style={{ flex: 1, minWidth: 220 }}>
         <h1>Hi {user?.name ? user.name.split(" ")[0] : "Student"}, here is your track sheet</h1>
-        <div className="muted small">Roles: {(user?.career_roles || []).map(r => CAREER_ROLES.find(x => x.id === r)?.label).filter(Boolean).join(" · ")} · <Link to="/plan">change</Link></div>
+        <div className="muted small">{user ? <>Roles: {(user?.career_roles || []).map(r => CAREER_ROLES.find(x => x.id === r)?.label).filter(Boolean).join(" · ")} · <Link to="/plan">change</Link></> : <>Tracking all 39 curriculum notebooks · Progress saved locally · <Link to="/signup">Create free account</Link> to sync across devices</>}</div>
       </div>
         <div className="row" style={{ gap: 20 }}>
           <div style={{ textAlign: "center" }}>
@@ -138,8 +156,9 @@ export default function Track() {
       const doc = docs[nb.slug];
       const prefix = nb.slug.slice(0, 3);
       const masterDoc = Object.values(docs).find(d => (d.slug === `${nb.slug}-master` || (d.slug.startsWith(prefix) && d.slug.endsWith("-master"))));
+      const masterSlug = masterDoc ? masterDoc.slug : `${nb.slug}-master`;
       const quickPdf = `https://ik.imagekit.io/likhi/resources-portal/pdfs/${nb.slug}.pdf`;
-      const masterPdf = masterDoc ? `https://ik.imagekit.io/likhi/resources-portal/long-pdfs/${masterDoc.slug}.pdf` : null;
+      const masterPdf = `https://ik.imagekit.io/likhi/resources-portal/long-pdfs/${masterSlug}.pdf`;
 
       return <div className={`nb ${isA2Z ? "nb-a2z" : isDsa ? "nb-dsa" : ""}`} key={nb.slug}>
         <div className="nb-head" onClick={() => flip(nb.slug)} role="button" aria-expanded={isOpen}>
@@ -155,12 +174,10 @@ export default function Track() {
           </div>
           <div className="row" style={{ width: 140 }}><Bar d={d} n={items.length} /></div>
           <div className="row" style={{ gap: 6, flexWrap: "wrap", alignItems: "center" }} onClick={e => e.stopPropagation()}>
-            {doc && <Link className="btn sm primary" to={read()}>Open notes</Link>}
+            <Link className="btn sm primary" to={read()}>Open notes</Link>
             <a className="btn sm" href={quickPdf} target="_blank" rel="noopener noreferrer" title="Direct Quick Revision PDF">PDF</a>
-            {masterDoc && <>
-              <Link className="btn sm" to={`/read/${masterDoc.slug}`} style={{ borderColor: "var(--ink)", color: "var(--ink)" }}>Master ({masterDoc.pages}p)</Link>
-              <a className="btn sm" href={masterPdf!} target="_blank" rel="noopener noreferrer" title="Direct Long-Form Master PDF">Master PDF</a>
-            </>}
+            <Link className="btn sm" to={`/read/${masterSlug}`} style={{ borderColor: "var(--ink)", color: "var(--ink)" }}>Master {masterDoc ? `(${masterDoc.pages}p)` : ""}</Link>
+            <a className="btn sm" href={masterPdf} target="_blank" rel="noopener noreferrer" title="Direct Long-Form Master PDF" style={{ borderColor: "#1b3fae", color: "#1b3fae", fontWeight: 600 }}>Master PDF</a>
           </div>
         </div>
         {isOpen && sections.map(sec => {
@@ -182,15 +199,14 @@ export default function Track() {
             </div>
             {sOpen && shown.map(it => <div className={`item ${done.has(it.id) ? "done" : ""}`} key={it.id}>
               <input type="checkbox" checked={done.has(it.id)} onChange={e => mark([it.id], e.target.checked)} aria-label={`Done: ${it.title}`} />
-              {doc ? <Link className="t" to={read(it.page || sec.page, it.id)} onClick={() => mark([it.id], true)} title="Open the notes at this topic">{it.title}</Link> : <span className="t">{it.title}</span>}
-              {doc && it.page && <Link className="btn sm primary" to={read(it.page, it.id)} onClick={() => mark([it.id], true)} title="Open our notes at this topic">Notes · p.{it.page}</Link>}
+              <Link className="t" to={read(it.page || sec.page, it.id)} onClick={() => mark([it.id], true)} title="Open the notes at this topic">{it.title}</Link>
+              {(it.page || sec.page) && <Link className="btn sm primary" to={read(it.page || sec.page, it.id)} onClick={() => mark([it.id], true)} title="Open our notes at this topic">Notes · p.{it.page || sec.page}</Link>}
               {nb.slug === A2Z && <a className="btn sm" href={`https://takeuforward.org/prep-hub/strivers-a2z-dsa-sheet?note=${tufSlug(it.title)}`} target="_blank" rel="noopener noreferrer" title="Extra resource on takeUforward">TUF</a>}
             </div>)}
           </div>;
         })}
       </div>;
     })}
-    {!Object.keys(docs).length && <div className="card small muted">Notes PDFs are being published. Topic links open the notes once a notebook is published.</div>}
     {!mine.length && <div className="card">No notebooks yet. <Link to="/plan">Choose your roles</Link>.</div>}
   </>;
 }

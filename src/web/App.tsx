@@ -207,6 +207,7 @@ export default function App() {
         <NavLink to="/plan" className={tab}>My plan</NavLink>
         <button className="sm" onClick={async () => { await api("/auth/logout", "POST", {}); setUser(null); nav("/login"); }}>Sign out</button>
       </> : <>
+        <NavLink to="/" end className={tab}>Track sheet</NavLink>
         <NavLink to="/library" className={tab}>Notes</NavLink>
         <NavLink to="/certifications" className={tab}>Certifications</NavLink>
         <NavLink to="/resources" className={tab}>Resources</NavLink>
@@ -218,12 +219,12 @@ export default function App() {
       </>}
     </div></header>
     <Routes>
-      <Route path="/read/:slug" element={guard(<Reader />)} />
+      <Route path="/read/:slug" element={<Reader />} />
       <Route path="*" element={<main className="wrap"><Routes>
         <Route path="/login" element={user ? <Navigate to="/" replace /> : <AuthPage mode="login" />} />
         <Route path="/signup" element={user ? <Navigate to="/" replace /> : <AuthPage mode="signup" />} />
         <Route path="/forgot" element={<AuthPage mode="forgot" />} />
-        <Route path="/" element={guard(user && !user.career_roles.length ? <Navigate to="/plan" replace /> : <Track />)} />
+        <Route path="/" element={<Track />} />
         <Route path="/plan" element={guard(<Plan />)} />
         <Route path="/library" element={<Library />} />
         <Route path="/certifications" element={<Certifications />} />

@@ -7,7 +7,7 @@ import { useAuth, Msg } from "./App";
 import { NOTEBOOKS, CAREER_ROLES } from "../shared/catalog";
 import topicsJson from "../shared/topics.json";
 
-type Item = { id: string; title: string; page?: number; masterPage?: number };
+type Item = { id: string; title: string; page?: number; masterPage?: number; tufUrl?: string; tufType?: string; tufSlug?: string; leetcodeUrl?: string; youtubeUrl?: string; duration?: string };
 type Section = { id: string; title: string; page?: number; masterPage?: number; items: Item[] };
 const TOPICS = topicsJson as Record<string, { slug: string; sections: Section[] }>;
 const A2Z = "11-dsa-a2z-solutions";
@@ -222,7 +222,13 @@ export default function Track() {
                 <a className="t" href={toUrl(targetUrl)} target={user ? "_blank" : undefined} rel="noopener noreferrer" title="Open master notes at this topic in new tab">{it.title}</a>
                 {targetPage && <a className="btn sm primary" href={toUrl(targetUrl)} target={user ? "_blank" : undefined} rel="noopener noreferrer" title="Open master notes at this topic in new tab">{label}</a>}
                 {shortP && shortP !== masterP && <a className="btn sm" href={toUrl(shortRead(shortP, it.id))} target={user ? "_blank" : undefined} rel="noopener noreferrer" title="Open Quick Revision notes in new tab">Quick · p.{shortP}</a>}
-                {nb.slug === A2Z && <a className="btn sm" href={`https://takeuforward.org/prep-hub/strivers-a2z-dsa-sheet?note=${tufSlug(it.title)}`} target="_blank" rel="noopener noreferrer" title="Extra resource on takeUforward">TUF ↗</a>}
+                {nb.slug === A2Z && (
+                  <>
+                    <a className="btn sm" href={it.tufUrl || `https://takeuforward.org/practice/dsa/${tufSlug(it.title)}`} target="_blank" rel="noopener noreferrer" title="Open interactive practice problem on takeUforward">TUF Practice ↗</a>
+                    {it.leetcodeUrl && <a className="btn sm" href={it.leetcodeUrl} target="_blank" rel="noopener noreferrer" title="Open problem on LeetCode">LeetCode ↗</a>}
+                    {it.youtubeUrl && <a className="btn sm" href={it.youtubeUrl} target="_blank" rel="noopener noreferrer" title="Watch video solution explanation on YouTube">Video ↗</a>}
+                  </>
+                )}
               </div>;
             })}
           </div>;

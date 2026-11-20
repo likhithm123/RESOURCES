@@ -20,6 +20,8 @@ const mpm = existsSync(join(here, "..", "..", "notes", "master_pagemap.json"))
   ? join(here, "..", "master_pagemap.json")
   : null;
 const masterPagemap = mpm ? JSON.parse(readFileSync(mpm, "utf8")) : {};
+const tufMapPath = join(here, "..", "src", "shared", "tuf_map.json");
+const tufMap = existsSync(tufMapPath) ? JSON.parse(readFileSync(tufMapPath, "utf8")) : {};
 const notebooks = {};
 {
   const files = readdirSync(dir).filter(f => f.endsWith(".md")).sort((a, b) => a.localeCompare(b, "en", { numeric: true }));
@@ -43,11 +45,18 @@ const notebooks = {};
         while (section.items.some(i => i.id === id)) id += "-x";
         const itMaster = masterPagemap[slug]?.[section.title + " >> " + title] || masterPagemap[slug]?.[title] || section.masterPage;
         const itShort = pagemap[slug]?.[section.title + " >> " + title] || pagemap[slug]?.[title] || section.page || itMaster || 1;
+        const tuf = tufMap[id] || tufMap[slugify(title)];
         section.items.push({
           id,
           title,
           page: itShort,
           masterPage: itMaster || itShort,
+          ...(tuf?.url ? { tufUrl: tuf.url } : {}),
+          ...(tuf?.type ? { tufType: tuf.type } : {}),
+          ...(tuf?.slug ? { tufSlug: tuf.slug } : {}),
+          ...(tuf?.leetcode ? { leetcodeUrl: tuf.leetcode } : {}),
+          ...(tuf?.youtube ? { youtubeUrl: tuf.youtube } : {}),
+          ...(tuf?.duration ? { duration: tuf.duration } : {}),
         });
       }
     }

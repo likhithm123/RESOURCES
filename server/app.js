@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import { Hono } from "hono";
 import { getCookie, setCookie, deleteCookie } from "hono/cookie";
 import { db } from "./db.js";
+import { analyzeJD } from "./jd_engine.js";
 import {
   HttpError, fail, randomToken, sha256, hmacHex, safeEqual, secret, hashPassword, verifyPassword, checkPassword,
   cleanEmail, str, safeUrl, jsonArr, parse, adminEmails, clientIp, rateLimit, audit, issueOtp, consumeOtp,
@@ -204,6 +205,7 @@ app.post("/progress", async c => {
 /* ---------------- Documents and the protected viewer ---------------- */
 const docView = d => ({ id: d.id, slug: d.slug, title: d.title, description: d.description, career_roles: parse(d.career_roles, []), pages: d.pages, sort_order: d.sort_order, published: !!d.published, updated_at: d.updated_at });
 app.get("/docs", async c => {
+  auth(c);
   return c.json({ docs: (await db.all("SELECT * FROM rp_documents WHERE published = 1 ORDER BY sort_order, slug")).map(docView) });
 });
 const signView = payload => { const p = Buffer.from(JSON.stringify(payload)).toString("base64url"); return `${p}.${hmacHex("sha256", secret(), "view:" + p)}`; };
@@ -313,6 +315,7 @@ app.get("/docs/:slug/search", async c => {
 /* ---------------- Resources / projects (links) ---------------- */
 const linkView = l => ({ ...l, career_roles: parse(l.career_roles, []), published: !!l.published });
 app.get("/links", async c => {
+  auth(c);
   return c.json({ links: (await db.all("SELECT * FROM rp_links WHERE published = 1 ORDER BY kind, sort_order, id")).map(linkView) });
 });
 
@@ -534,6 +537,7 @@ app.put("/admin/settings", async c => {
 
 /* ---------------- Certifications (Public List & Admin CMS) ---------------- */
 app.get("/certifications", async c => {
+  auth(c);
   const rows = await db.all("SELECT id, title, provider, tier, cost, role, url, resources_url, description, sort_order FROM rp_certifications WHERE published = 1 ORDER BY sort_order, id");
   return c.json({ certifications: rows });
 });
@@ -619,6 +623,66 @@ app.put("/admin/feedback/:id", async c => {
 
 app.delete("/admin/feedback/:id", async c => {
   admin(c); await db.run("DELETE FROM rp_feedback WHERE id = ?", [Number(c.req.param("id"))]);
+  return c.json({ ok: true });
+});
+
+/* ---------------- Job Description Analyzer & Study Checklists ---------------- */
+app.post("/jd/analyze", async c => {
+  auth(c);
+  const b = await body(c);
+  const analysis = analyzeJD(b.text || "", b.company || "");
+  return c.json({ ok: true, ...analysis });
+});
+
+app.get("/jd", async c => {
+  const u = auth(c);
+  const rows = await db.all("SELECT * FROM rp_job_checklists WHERE user_id = ? ORDER BY updated_at DESC", [u.id]);
+  return c.json({
+    checklists: rows.map(r => ({
+      ...r,
+      skills: parse(r.skills_json, []),
+      items: parse(r.checklist_json, [])
+    }))
+  });
+});
+
+app.post("/jd", async c => {
+  const u = auth(c);
+  const b = await body(c);
+  const title = str(b.title, 200) || "Target Job Checklist";
+  const company = str(b.company, 100) || "";
+  const rawText = str(b.raw_text, 65535) || "";
+  const roleDetected = str(b.role_detected, 100) || "Software Engineer";
+  const matchScore = Number(b.match_score) || 0;
+  const skillsJson = JSON.stringify(Array.isArray(b.skills) ? b.skills : []);
+  const checklistJson = JSON.stringify(Array.isArray(b.items) ? b.items : []);
+
+  const res = await db.run(
+    "INSERT INTO rp_job_checklists (user_id, title, company, raw_text, role_detected, match_score, skills_json, checklist_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+    [u.id, title, company, rawText, roleDetected, matchScore, skillsJson, checklistJson]
+  );
+  return c.json({ ok: true, id: res.lastId });
+});
+
+app.put("/jd/:id", async c => {
+  const u = auth(c);
+  const id = Number(c.req.param("id"));
+  const b = await body(c);
+  const row = await db.first("SELECT * FROM rp_job_checklists WHERE id = ? AND user_id = ?", [id, u.id]);
+  if (!row) fail(404, "Checklist not found.");
+
+  const checklistJson = JSON.stringify(Array.isArray(b.items) ? b.items : []);
+  await db.run(
+    "UPDATE rp_job_checklists SET checklist_json = ?, updated_at = datetime('now') WHERE id = ?",
+    [checklistJson, id]
+  );
+  return c.json({ ok: true });
+});
+
+app.delete("/jd/:id", async c => {
+  const u = auth(c);
+  const id = Number(c.req.param("id"));
+  await db.run("DELETE FROM rp_job_checklists WHERE id = ? AND user_id = ?", [id, u.id]);
   return c.json({ ok: true });
 });
 

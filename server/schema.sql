@@ -143,3 +143,18 @@ CREATE TABLE IF NOT EXISTS rp_site_settings (
   value TEXT NOT NULL DEFAULT '',
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+-- Job Description custom study checklists
+CREATE TABLE IF NOT EXISTS rp_job_checklists (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  title TEXT NOT NULL,
+  company TEXT NOT NULL DEFAULT '',
+  raw_text TEXT NOT NULL,
+  role_detected TEXT NOT NULL,
+  match_score INTEGER NOT NULL DEFAULT 0,
+  skills_json TEXT NOT NULL DEFAULT '[]',
+  checklist_json TEXT NOT NULL DEFAULT '[]',
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS rp_idx_job_checklists_user ON rp_job_checklists(user_id, updated_at);

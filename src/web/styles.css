@@ -230,14 +230,16 @@ input[type=checkbox] {
     flex: none;
 }
 
-label.f {
+label.f,
+div.f {
     display: block;
     margin-bottom: 12px;
     font-size: 13px;
     color: var(--muted);
 }
 
-label.f>span {
+label.f>span,
+div.f>span {
     display: block;
     margin-bottom: 4px;
 }
@@ -275,20 +277,43 @@ label.f>span {
     gap: 8px;
 }
 
-.chip {
+.chip,
+button.chip {
     border: 1px solid var(--line);
     border-radius: 999px;
-    padding: 5px 12px;
+    padding: 6px 14px;
     cursor: pointer;
-    background: #fff;
+    background: #ffffff;
     font-size: 14px;
+    font-family: inherit;
+    line-height: normal;
+    color: var(--text);
     user-select: none;
+    -webkit-user-select: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
 }
 
-.chip.on {
+.chip:hover,
+button.chip:hover {
+    border-color: #93c5fd;
+    background: #f0f7ff;
+}
+
+.chip.on,
+button.chip.on {
     background: var(--ink);
-    color: #fff;
+    color: #ffffff;
     border-color: var(--ink);
+}
+
+.chip.on:hover,
+button.chip.on:hover {
+    background: var(--ink2);
+    border-color: var(--ink2);
+    color: #ffffff;
 }
 
 .bar {

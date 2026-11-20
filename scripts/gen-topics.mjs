@@ -34,18 +34,20 @@ const notebooks = {};
       if (line.startsWith("## ")) {
         const title = line.slice(3).replace(/\*\*/g, "").trim();
         const secMaster = masterPagemap[slug]?.[title];
-        section = { id: `${slug}/${slugify(title)}`, title, items: [], page: pagemap[slug]?.[title], ...(secMaster ? { masterPage: secMaster } : {}) };
+        const secShort = pagemap[slug]?.[title] || secMaster || 1;
+        section = { id: `${slug}/${slugify(title)}`, title, items: [], page: secShort, masterPage: secMaster || secShort };
         nb.sections.push(section);
       } else if (line.startsWith("### ") && section) {
         const title = line.slice(4).replace(/\*\*/g, "").trim();
         let id = `${section.id}/${slugify(title)}`;
         while (section.items.some(i => i.id === id)) id += "-x";
         const itMaster = masterPagemap[slug]?.[section.title + " >> " + title] || masterPagemap[slug]?.[title] || section.masterPage;
+        const itShort = pagemap[slug]?.[section.title + " >> " + title] || pagemap[slug]?.[title] || section.page || itMaster || 1;
         section.items.push({
           id,
           title,
-          page: pagemap[slug]?.[section.title + " >> " + title] || pagemap[slug]?.[title],
-          ...(itMaster ? { masterPage: itMaster } : {})
+          page: itShort,
+          masterPage: itMaster || itShort,
         });
       }
     }

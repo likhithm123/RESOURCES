@@ -18,16 +18,53 @@ export const ALL_ROLES = CAREER_ROLES.map(r => r.id);
 
 export function RoleChips({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
   const allSelected = CAREER_ROLES.length > 0 && CAREER_ROLES.every(r => value.includes(r.id));
+  const toggle = (id: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (value.includes(id)) {
+      onChange(value.filter(x => x !== id));
+    } else {
+      onChange([...value, id]);
+    }
+  };
+
   return <div>
     <div className="row" style={{ marginBottom: 8, gap: 8 }}>
-      <button type="button" className="btn sm" onClick={() => onChange(ALL_ROLES)} disabled={allSelected}>Select all</button>
-      <button type="button" className="btn sm" onClick={() => onChange([])} disabled={!value.length}>Clear all</button>
+      <button
+        type="button"
+        className="btn sm"
+        onClick={e => { e.preventDefault(); e.stopPropagation(); onChange(ALL_ROLES); }}
+        disabled={allSelected}
+      >
+        Select all
+      </button>
+      <button
+        type="button"
+        className="btn sm"
+        onClick={e => { e.preventDefault(); e.stopPropagation(); onChange([]); }}
+        disabled={!value.length}
+      >
+        Clear all
+      </button>
       <span className="small muted">({value.length} of {CAREER_ROLES.length} selected)</span>
     </div>
-    <div className="chips">{CAREER_ROLES.map(r =>
-      <span key={r.id} role="checkbox" aria-checked={value.includes(r.id)} tabIndex={0} className={`chip ${value.includes(r.id) ? "on" : ""}`}
-        onClick={() => onChange(value.includes(r.id) ? value.filter(x => x !== r.id) : [...value, r.id])}
-        onKeyDown={e => e.key === "Enter" && (e.currentTarget as HTMLElement).click()}>{r.label}</span>)}</div>
+    <div className="chips">
+      {CAREER_ROLES.map(r => {
+        const selected = value.includes(r.id);
+        return (
+          <button
+            key={r.id}
+            type="button"
+            role="checkbox"
+            aria-checked={selected}
+            className={`chip ${selected ? "on" : ""}`}
+            onClick={e => toggle(r.id, e)}
+          >
+            {r.label}
+          </button>
+        );
+      })}
+    </div>
   </div>;
 }
 
@@ -95,7 +132,7 @@ function AuthPage({ mode }: { mode: "login" | "signup" | "forgot" }) {
         <label className="f"><span>Email</span><input type="email" value={f.email} onChange={set("email")} required autoComplete="email" /></label>
         {mode !== "forgot" && <label className="f"><span>Password {mode === "signup" && "(8+ characters, letters and numbers)"}</span>
           <input type="password" value={f.password} onChange={set("password")} required minLength={8} autoComplete={mode === "signup" ? "new-password" : "current-password"} /></label>}
-        {mode === "signup" && <label className="f"><span>Which topics & roles are you preparing for? (all selected by default — click to remove any you don't need)</span><RoleChips value={f.roles} onChange={roles => setF({ ...f, roles })} /></label>}
+        {mode === "signup" && <div className="f"><span>Which topics & roles are you preparing for? (all selected by default — click to remove any you don't need)</span><RoleChips value={f.roles} onChange={roles => setF({ ...f, roles })} /></div>}
         {mode === "signup" && <label className="row small" style={{ marginTop: 14, alignItems: "flex-start", gap: 10, cursor: "pointer" }}>
           <input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} required style={{ marginTop: 2 }} />
           <span>I understand this is an independent study preparation resource (not affiliated with any company or certification body, with no legal liability for content accuracy). I agree to the <Link to="/terms" target="_blank" style={{ textDecoration: "underline" }}>Terms & Conditions</Link> and <Link to="/privacy" target="_blank" style={{ textDecoration: "underline" }}>Privacy Policy</Link>.</span>
@@ -137,7 +174,7 @@ function Plan() {
     <p className="muted">Pick the roles you want. Your track sheet shows the notebooks for those roles; you can add or hide individual notebooks on the track sheet.</p>
     <Msg kind="ok">{msg}</Msg>
     <label className="f"><span>Name</span><input value={name} onChange={e => setName(e.target.value)} /></label>
-    <label className="f"><span>Target roles</span><RoleChips value={roles} onChange={setRoles} /></label>
+    <div className="f"><span>Target roles</span><RoleChips value={roles} onChange={setRoles} /></div>
     <button className="primary" onClick={save} disabled={!roles.length}>Save and open my track sheet</button>
   </div>;
 }

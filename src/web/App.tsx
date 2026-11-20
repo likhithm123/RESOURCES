@@ -6,6 +6,7 @@ import Track from "./Track";
 import Reader from "./Reader";
 import Admin from "./Admin";
 import JDAnalyzer from "./JDAnalyzer";
+import Checklists from "./Checklists";
 import { Library, Links, Connect, Certifications, Feedback, Legal } from "./Pages";
 
 type AuthCtx = { user: User | null; setUser: (u: User | null) => void; refresh: () => Promise<void> };
@@ -313,6 +314,7 @@ export default function App() {
         <div className="nav-in">
           <Link to="/" className="brand">Resources Portal</Link>
           <NavLink to="/" end className={tab}>Track sheet</NavLink>
+          <NavLink to="/checklists" className={tab}>Checklists</NavLink>
           <NavLink to="/jd" className={tab}>JD Prep</NavLink>
           <NavLink to="/library" className={tab}>Notes</NavLink>
           <NavLink to="/certifications" className={tab}>Certifications</NavLink>
@@ -331,6 +333,7 @@ export default function App() {
           <main className="wrap">
             <Routes>
               <Route path="/" element={<Track />} />
+              <Route path="/checklists" element={<Checklists />} />
               <Route path="/jd" element={<JDAnalyzer />} />
               <Route path="/plan" element={<Plan />} />
               <Route path="/library" element={<Library />} />

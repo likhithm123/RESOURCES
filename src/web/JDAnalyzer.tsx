@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { api } from "./api";
 
 export type ChecklistItem = {
@@ -12,6 +12,10 @@ export type ChecklistItem = {
   priority: "High" | "Medium" | "Low";
   category: string;
   why: string;
+  tufUrl?: string | null;
+  leetcodeUrl?: string | null;
+  youtubeUrl?: string | null;
+  duration?: string | null;
   completed: boolean;
 };
 
@@ -103,6 +107,7 @@ Requirements:
 ];
 
 export default function JDAnalyzer() {
+  const navigate = useNavigate();
   const [inputMode, setInputMode] = useState<"text" | "file" | "image">("text");
   const [jdText, setJdText] = useState("");
   const [company, setCompany] = useState("");
@@ -342,23 +347,36 @@ export default function JDAnalyzer() {
   }
 
   // Save checklist to database
-  async function handleSave() {
+  async function handleSave(openTab = false) {
     if (!result) return;
     setIsSaving(true);
     try {
-      const res = await api<{ ok: boolean; id: number }>("/jd", "POST", {
-        title: result.title,
-        company: result.company,
-        raw_text: jdText,
-        role_detected: result.role_detected,
-        match_score: result.match_score,
-        skills: result.skills,
-        items: result.items
-      });
-      setActiveChecklistId(res.id);
+      let targetId = activeChecklistId;
+      if (activeChecklistId) {
+        await api(`/jd/${activeChecklistId}`, "PUT", {
+          title: result.title,
+          company: result.company,
+          items: result.items
+        });
+      } else {
+        const res = await api<{ ok: boolean; id: number }>("/jd", "POST", {
+          title: result.title,
+          company: result.company,
+          raw_text: jdText,
+          role_detected: result.role_detected,
+          match_score: result.match_score,
+          skills: result.skills,
+          items: result.items
+        });
+        targetId = res.id;
+        setActiveChecklistId(res.id);
+      }
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
       await loadSaved();
+      if (openTab && targetId) {
+        navigate(`/checklists?id=${targetId}`);
+      }
     } catch (e: any) {
       setError(e.message || "Failed to save checklist.");
     } finally {
@@ -629,14 +647,24 @@ export default function JDAnalyzer() {
                           {s.company ? `${s.company} • ` : ""}{s.role_detected} • {done}/{total} done ({pct}%)
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        className="btn-del"
-                        title="Delete checklist"
-                        onClick={e => handleDeleteSaved(s.id, e)}
-                      >
-                        Delete
-                      </button>
+                      <div className="saved-item-actions" style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                        <Link
+                          to={`/checklists?id=${s.id}`}
+                          className="reader-link-btn"
+                          style={{ fontSize: "11px", padding: "3px 8px" }}
+                          onClick={e => e.stopPropagation()}
+                        >
+                          Tab ↗
+                        </Link>
+                        <button
+                          type="button"
+                          className="btn-del"
+                          title="Delete checklist"
+                          onClick={e => handleDeleteSaved(s.id, e)}
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
                   );
                 })}
@@ -714,10 +742,28 @@ export default function JDAnalyzer() {
                     type="button"
                     className="btn-save"
                     disabled={isSaving}
-                    onClick={handleSave}
+                    onClick={() => handleSave(false)}
                   >
                     {isSaving ? "Saving..." : saveSuccess ? "Saved to Profile!" : activeChecklistId ? "Sync to Cloud" : "Save Checklist"}
                   </button>
+                  <button
+                    type="button"
+                    className="btn-save"
+                    style={{ background: "#2563eb" }}
+                    disabled={isSaving}
+                    onClick={() => handleSave(true)}
+                  >
+                    Save & Open in Tab ↗
+                  </button>
+                  {activeChecklistId && (
+                    <Link
+                      to={`/checklists?id=${activeChecklistId}`}
+                      className="btn-secondary"
+                      style={{ textDecoration: "none", display: "inline-flex", alignItems: "center" }}
+                    >
+                      View in Checklists Tab ➔
+                    </Link>
+                  )}
                   <button type="button" className="btn-secondary" onClick={exportMarkdown}>
                     Export Markdown
                   </button>
@@ -797,16 +843,50 @@ export default function JDAnalyzer() {
 
                         <div className="item-bottom-row">
                           <span className="source-info">
-                            Source: <strong>{item.subject_title}</strong> (Page {item.page})
+                            Source: <strong>{item.subject_title}</strong> (Page {item.master_page || item.page || 1})
+                            {item.duration ? ` · ${item.duration}` : ""}
                           </span>
-                          <Link
-                            to={`/read/${item.subject_slug}?page=${item.page}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="reader-link-btn"
-                          >
-                            Open in Reader &rarr;
-                          </Link>
+                          <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", alignItems: "center" }}>
+                            <Link
+                              to={`/library?doc=${encodeURIComponent(item.subject_slug)}&page=${item.master_page || item.page || 1}`}
+                              className="reader-link-btn"
+                            >
+                              Notes · p.{item.master_page || item.page || 1}
+                            </Link>
+                            {item.tufUrl && (
+                              <a
+                                href={item.tufUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="reader-link-btn"
+                                style={{ background: "#ecfdf5", color: "#065f46" }}
+                              >
+                                TUF Practice ↗
+                              </a>
+                            )}
+                            {item.leetcodeUrl && (
+                              <a
+                                href={item.leetcodeUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="reader-link-btn"
+                                style={{ background: "#fffbeb", color: "#92400e" }}
+                              >
+                                LeetCode ↗
+                              </a>
+                            )}
+                            {item.youtubeUrl && (
+                              <a
+                                href={item.youtubeUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="reader-link-btn"
+                                style={{ background: "#fef2f2", color: "#991b1b" }}
+                              >
+                                Video ↗
+                              </a>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>

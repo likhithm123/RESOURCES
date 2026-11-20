@@ -673,6 +673,32 @@ app.post("/jd/parse-file", async c => {
   return c.json({ ok: true, text: extractedText.trim() });
 });
 
+// Auto-ensure rp_job_checklists table exists on initialization
+let jdTableChecked = false;
+async function ensureJdTable() {
+  if (jdTableChecked) return;
+  try {
+    await db.run(`
+      CREATE TABLE IF NOT EXISTS rp_job_checklists (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        title TEXT NOT NULL,
+        company TEXT NOT NULL DEFAULT '',
+        raw_text TEXT NOT NULL,
+        role_detected TEXT NOT NULL,
+        match_score INTEGER NOT NULL DEFAULT 0,
+        skills_json TEXT NOT NULL DEFAULT '[]',
+        checklist_json TEXT NOT NULL DEFAULT '[]',
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+    `);
+    jdTableChecked = true;
+  } catch (e) {
+    console.error("Failed to ensure rp_job_checklists table:", e);
+  }
+}
+
 app.post("/jd/analyze", async c => {
   auth(c);
   const b = await body(c);
@@ -682,6 +708,7 @@ app.post("/jd/analyze", async c => {
 
 app.get("/jd", async c => {
   const u = auth(c);
+  await ensureJdTable();
   const rows = await db.all("SELECT * FROM rp_job_checklists WHERE user_id = ? ORDER BY updated_at DESC", [u.id]);
   return c.json({
     checklists: rows.map(r => ({
@@ -694,6 +721,7 @@ app.get("/jd", async c => {
 
 app.post("/jd", async c => {
   const u = auth(c);
+  await ensureJdTable();
   const b = await body(c);
   const title = str(b.title, 200) || "Target Job Checklist";
   const company = str(b.company, 100) || "";
@@ -712,21 +740,26 @@ app.post("/jd", async c => {
 
 app.put("/jd/:id", async c => {
   const u = auth(c);
+  await ensureJdTable();
   const id = Number(c.req.param("id"));
   const b = await body(c);
   const row = await db.first("SELECT * FROM rp_job_checklists WHERE id = ? AND user_id = ?", [id, u.id]);
   if (!row) fail(404, "Checklist not found.");
 
-  const checklistJson = JSON.stringify(Array.isArray(b.items) ? b.items : []);
+  const title = b.title !== undefined ? str(b.title, 200) : row.title;
+  const company = b.company !== undefined ? str(b.company, 100) : row.company;
+  const checklistJson = b.items !== undefined ? JSON.stringify(Array.isArray(b.items) ? b.items : []) : row.checklist_json;
+
   await db.run(
-    "UPDATE rp_job_checklists SET checklist_json = ?, updated_at = datetime('now') WHERE id = ?",
-    [checklistJson, id]
+    "UPDATE rp_job_checklists SET title = ?, company = ?, checklist_json = ?, updated_at = datetime('now') WHERE id = ?",
+    [title, company, checklistJson, id]
   );
   return c.json({ ok: true });
 });
 
 app.delete("/jd/:id", async c => {
   const u = auth(c);
+  await ensureJdTable();
   const id = Number(c.req.param("id"));
   await db.run("DELETE FROM rp_job_checklists WHERE id = ? AND user_id = ?", [id, u.id]);
   return c.json({ ok: true });

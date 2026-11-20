@@ -1,7 +1,7 @@
 /**
  * Precision Job Description Analysis Engine
  * Maps raw job descriptions (text/pdf/doc/image) to tailored curriculum checklists
- * with exact notebook slugs, section titles, and page numbers.
+ * with exact notebook slugs, section titles, master page numbers, and TUF/LeetCode practice links.
  */
 
 import fs from "node:fs";
@@ -24,6 +24,15 @@ function getTopics() {
 
 // Master Skill Dictionary mapping keywords to curriculum slugs and key sections
 const SKILL_RULES = [
+  // Problem Solving & Data Structures & Algorithms (MANDATORY FOR ALL TECH ROLES)
+  {
+    regex: /\b(problem\s*solving|problem\s*solver|analytical\s*skills?|troubleshoot\w*|logic(?:al)?\s*reasoning|critical\s*thinking|coding|programming|dsa|data\s*structures?|algorithms?|algorithmic|leetcode|hackerrank|codeforces|competitive\s*programming|complexity|time\s*complexity|space\s*complexity|big[- ]?o|arrays?|linked\s*lists?|trees?|graphs?|dynamic\s*programming|recursion|sorting|searching|binary\s*search)\b/gi,
+    skill: "Problem Solving & Data Structures (DSA)",
+    slugs: ["10-dsa-basics-data-structures", "11-dsa-a2z-solutions"],
+    category: "Problem Solving & DSA",
+    priority: "High",
+    why: "Core algorithmic problem-solving and coding interview benchmark mandatory for technical rounds."
+  },
   // Java & Spring Boot
   {
     regex: /\b(java|spring\s*boot|spring\s*cloud|hibernate|jpa|jvm|microservices|maven|gradle)\b/gi,
@@ -68,15 +77,6 @@ const SKILL_RULES = [
     category: "Architecture & Scale",
     priority: "High",
     why: "Enterprise scalability and distributed architecture requirements identified."
-  },
-  // Data Structures & Algorithms
-  {
-    regex: /\b(dsa|data\s*structures?|algorithms?|leetcode|problem\s*solving|complexity|trees?|graphs?|dynamic\s*programming)\b/gi,
-    skill: "Data Structures & Algorithms (DSA)",
-    slugs: ["10-dsa-basics-data-structures", "11-dsa-a2z-solutions"],
-    category: "Computer Science Core",
-    priority: "High",
-    why: "Algorithmic problem-solving and coding interview benchmark."
   },
   // SQL / Databases
   {
@@ -125,7 +125,7 @@ const SKILL_RULES = [
   },
   // AI, LLMs & GenAI
   {
-    regex: /\b(ai|genai|generative\s*ai|llms?|large\s*language\s*models?|rag|retrieval\s*augmented|langchain|langgraph|prompt\s*engineering|vector\s*db|embeddings?|openai|anthropic|claude)\b/gi,
+    regex: /\b(ai\s*engineer|genai\s*engineer|llm\s*engineer|large\s*language\s*models?|rag|retrieval\s*augmented|langchain|langgraph|prompt\s*engineering|vector\s*db|embeddings?|openai|anthropic|claude)\b/gi,
     skill: "GenAI, LLMs, RAG & Autonomous Agents",
     slugs: ["19-ai-engineer-llms", "22-ai-implementations-langchain-langgraph", "35-claude-anthropic-and-mcp"],
     category: "Artificial Intelligence",
@@ -143,7 +143,7 @@ const SKILL_RULES = [
   },
   // Cyber Security
   {
-    regex: /\b(cyber\s*security|infosec|security|owasp|vulnerabilit\w+|penetration\s*testing|cryptography|iam|auth0|jwt|oauth2?)\b/gi,
+    regex: /\b(cyber\s*security|infosec|security\s*engineer|owasp|vulnerabilit\w+|penetration\s*testing|cryptography|iam|auth0|jwt|oauth2?)\b/gi,
     skill: "Cyber Security & Application Hardening",
     slugs: ["23-cyber-security"],
     category: "Security & Governance",
@@ -269,8 +269,22 @@ const NOTEBOOK_META = {
   "41-go-programming-and-concurrency": { title: "Go Programming & Concurrency Systems Architecture", role: "sde" }
 };
 
+// Core high-frequency coding interview problem titles from 11-dsa-a2z-solutions
+const CORE_DSA_TARGETS = [
+  "Two Sum",
+  "Longest Consecutive Sequence in an Array",
+  "Detect a loop in LL",
+  "Reverse a LinkedList",
+  "Merge Intervals",
+  "Trapping Rainwater",
+  "Level Order Traversal",
+  "Number of islands",
+  "Climbing stairs",
+  "Binary Search"
+];
+
 /**
- * High-accuracy JD Analyzer
+ * High-accuracy Multi-Factor Role Scorer & JD Analyzer
  */
 export function analyzeJD(text, companyHint = "") {
   const clean = (text || "").trim();
@@ -278,37 +292,74 @@ export function analyzeJD(text, companyHint = "") {
     throw new Error("Job description text is too short. Please provide at least 20 characters.");
   }
 
-  // 1. Detect Role
-  let roleDetected = "SDE / Software Engineer";
-  let targetRoleId = "sde";
+  const lines = clean.split("\n").map(l => l.trim()).filter(Boolean);
+  const headerText = lines.slice(0, 4).join(" ").toLowerCase();
   const lower = clean.toLowerCase();
 
-  if (/\b(ai\s*engineer|genai|llm\s*engineer|prompt\s*engineer)\b/i.test(lower)) {
-    roleDetected = "AI Engineer (GenAI / LLMs)";
-    targetRoleId = "ai";
-  } else if (/\b(machine\s*learning|ml\s*engineer|deep\s*learning|nlp|computer\s*vision)\b/i.test(lower)) {
-    roleDetected = "ML Engineer";
-    targetRoleId = "ml";
-  } else if (/\b(data\s*scientist|data\s*analyst|bi\s*analyst|analytics)\b/i.test(lower)) {
-    roleDetected = "Data Scientist / Data Analyst";
-    targetRoleId = "data";
-  } else if (/\b(devops|cloud\s*engineer|sre|site\s*reliability|infrastructure|platform\s*engineer)\b/i.test(lower)) {
-    roleDetected = "DevOps / Cloud Engineer";
-    targetRoleId = "devops";
-  } else if (/\b(full\s*stack|frontend|react|angular|vue|web\s*developer)\b/i.test(lower)) {
-    roleDetected = "Full Stack Developer";
-    targetRoleId = "fullstack";
-  } else if (/\b(cyber\s*security|infosec|security\s*engineer|soc\s*analyst|penetration)\b/i.test(lower)) {
-    roleDetected = "Cyber Security Engineer";
-    targetRoleId = "security";
-  } else if (/\b(salesforce|apex|lwc)\b/i.test(lower)) {
-    roleDetected = "Salesforce Developer";
-    targetRoleId = "salesforce";
+  // 1. Role Scoring Map
+  const scores = {
+    sde: 0,
+    fullstack: 0,
+    ai: 0,
+    ml: 0,
+    data: 0,
+    devops: 0,
+    security: 0,
+    salesforce: 0,
+  };
+
+  // Header / Job Title carries highest weight (+15 to +20)
+  if (/\b(full\s*stack|frontend|front\s*end|web\s*developer|react|angular)\b/i.test(headerText)) scores.fullstack += 18;
+  if (/\b(software\s*(?:engineer|developer)|sde|backend|software\s*development|java\s*developer|systems?\s*engineer)\b/i.test(headerText)) scores.sde += 16;
+  if (/\b(ai\s*engineer|genai\s*engineer|llm\s*engineer|prompt\s*engineer)\b/i.test(headerText)) scores.ai += 20;
+  if (/\b(machine\s*learning|ml\s*engineer|deep\s*learning|nlp|computer\s*vision)\b/i.test(headerText)) scores.ml += 18;
+  if (/\b(data\s*(?:scientist|analyst)|bi\s*analyst|analytics\s*engineer)\b/i.test(headerText)) scores.data += 18;
+  if (/\b(devops|cloud\s*engineer|sre|site\s*reliability|infrastructure|platform\s*engineer)\b/i.test(headerText)) scores.devops += 18;
+  if (/\b(cyber\s*security|infosec|security\s*engineer|soc\s*analyst|penetration\s*tester)\b/i.test(headerText)) scores.security += 18;
+  if (/\b(salesforce|apex|lwc)\b/i.test(headerText)) scores.salesforce += 20;
+
+  // Body keyword frequency scoring
+  const count = (regex) => (lower.match(regex) || []).length;
+  scores.sde += count(/\b(software\s*(?:engineer|development|developer)|sde|backend|java|c\+\+|golang|spring\s*boot|object[-\s]oriented|oops?|microservices?)\b/g) * 2;
+  scores.fullstack += count(/\b(full\s*stack|frontend|front\s*end|react(?:\.js)?|vue|angular|node(?:\.js)?|express|html\/?css|javascript|typescript)\b/g) * 2;
+  scores.ai += count(/\b(genai|llms?|rag|langchain|prompt\s*engineering|hugging\s*face|openai|fine[-\s]tuning|vector\s*db)\b/g) * 3;
+  scores.ml += count(/\b(machine\s*learning|scikit[-\s]learn|tensorflow|pytorch|deep\s*learning|neural\s*network|supervised)\b/g) * 3;
+  scores.data += count(/\b(data\s*(?:scientist|analysis|analyst)|pandas|tableau|power\s*bi|statistics|bi\s*analyst|data\s*warehouse)\b/g) * 3;
+  scores.devops += count(/\b(devops|kubernetes|docker|terraform|ci\/?cd|jenkins|aws|cloud\s*infrastructure|sre)\b/g) * 3;
+  scores.security += count(/\b(cyber\s*security|infosec|penetration|soc|owasp|cryptography|vulnerability|firewall)\b/g) * 3;
+  scores.salesforce += count(/\b(salesforce|apex|lwc|visualforce|soql)\b/g) * 4;
+
+  // De-weight "is a plus / nice to have" for peripheral skills so they do not overpower primary job title
+  if (/exposure to (?:ai|ml|genai).*?(?:is a plus|nice to have|good to have)/i.test(lower)) {
+    scores.ai = Math.max(0, scores.ai - 6);
+    scores.ml = Math.max(0, scores.ml - 6);
   }
+
+  // Determine top winning role
+  let targetRoleId = "sde";
+  let maxScore = -1;
+  for (const [r, s] of Object.entries(scores)) {
+    if (s > maxScore) {
+      maxScore = s;
+      targetRoleId = r;
+    }
+  }
+
+  const roleNameMap = {
+    sde: "SDE / Software Engineer",
+    fullstack: "Full Stack Developer",
+    ai: "AI Engineer (GenAI / LLMs)",
+    ml: "ML Engineer",
+    data: "Data Scientist / Data Analyst",
+    devops: "DevOps / Cloud Engineer",
+    security: "Cyber Security Engineer",
+    salesforce: "Salesforce Developer"
+  };
+  const roleDetected = roleNameMap[targetRoleId] || "SDE / Software Engineer";
 
   // 2. Detect Seniority
   let seniority = "Software Engineer";
-  if (/\b(intern|internship|graduate|associate|junior|entry\s*level)\b/i.test(lower)) {
+  if (/\b(intern|internship|graduate|associate|junior|entry\s*level|rotational)\b/i.test(lower)) {
     seniority = "Junior / Associate";
   } else if (/\b(staff|principal|director|head\s*of|architect)\b/i.test(lower)) {
     seniority = "Staff / Principal Architect";
@@ -317,10 +368,9 @@ export function analyzeJD(text, companyHint = "") {
   }
 
   // 3. Extract Role Title
-  const firstLines = clean.split("\n").map(l => l.trim()).filter(Boolean);
   let title = `${seniority} - ${roleDetected}`;
-  if (firstLines.length > 0 && firstLines[0].length < 80 && !firstLines[0].toLowerCase().includes("about us")) {
-    title = firstLines[0].replace(/^[#*-\s]+/, "").trim();
+  if (lines.length > 0 && lines[0].length < 80 && !lines[0].toLowerCase().includes("about us") && !lines[0].toLowerCase().includes("http")) {
+    title = lines[0].replace(/^[#*-\s]+/, "").trim();
   }
 
   // 4. Match Skills & Slugs
@@ -336,11 +386,17 @@ export function analyzeJD(text, companyHint = "") {
     }
   }
 
-  // Default baseline subjects for any SWE role
+  // DSA & Problem Solving is strictly mandatory for all tech roles in modern coding rounds
+  if (!detectedSkills.includes("Problem Solving & Data Structures (DSA)")) {
+    detectedSkills.unshift("Problem Solving & Data Structures (DSA)");
+  }
+  matchedSlugs.add("10-dsa-basics-data-structures");
+  matchedSlugs.add("11-dsa-a2z-solutions");
+
+  // Universal baseline subjects for tech interviews
   matchedSlugs.add("32-hr-interview-self-introduction");
   matchedSlugs.add("30-projects-for-every-role");
   if (matchedSlugs.size < 4) {
-    matchedSlugs.add("10-dsa-basics-data-structures");
     matchedSlugs.add("12-system-design-hld-lld");
     matchedSlugs.add("05-sql-mysql-postgresql");
   }
@@ -350,13 +406,72 @@ export function analyzeJD(text, companyHint = "") {
   const checklistItems = [];
   let itemCounter = 1;
 
+  // A. Add Core High-Frequency DSA Interview Problems (from 11-dsa-a2z-solutions)
+  const a2z = allTopics["11-dsa-a2z-solutions"];
+  if (a2z && a2z.sections) {
+    const flatItems = [];
+    for (const sec of a2z.sections) {
+      for (const it of (sec.items || [])) {
+        flatItems.push({ secTitle: sec.title, ...it });
+      }
+    }
+
+    // Select core DSA targets
+    for (const target of CORE_DSA_TARGETS) {
+      const found = flatItems.find(it => it.title && it.title.toLowerCase().includes(target.toLowerCase()));
+      if (found) {
+        checklistItems.push({
+          id: `item_${itemCounter++}`,
+          topic: found.title,
+          subject_slug: "11-dsa-a2z-solutions",
+          subject_title: "DSA A2Z Sheet Solutions",
+          page: found.page || 1,
+          master_page: found.masterPage || found.page || 1,
+          priority: "High",
+          category: "Problem Solving & DSA",
+          why: "Essential algorithmic coding interview benchmark tested across top tech companies.",
+          tufUrl: found.tufUrl || null,
+          leetcodeUrl: found.leetcodeUrl || null,
+          youtubeUrl: found.youtubeUrl || null,
+          duration: found.duration || null,
+          completed: false
+        });
+      }
+    }
+  }
+
+  // B. Add DSA Foundations (from 10-dsa-basics-data-structures)
+  const dsaBasics = allTopics["10-dsa-basics-data-structures"];
+  if (dsaBasics && dsaBasics.sections) {
+    const coreBasics = dsaBasics.sections.slice(0, 3);
+    for (const sec of coreBasics) {
+      checklistItems.push({
+        id: `item_${itemCounter++}`,
+        topic: sec.title,
+        subject_slug: "10-dsa-basics-data-structures",
+        subject_title: "DSA Basics: Data Structures",
+        page: sec.page || 1,
+        master_page: sec.masterPage || sec.page || 1,
+        priority: "High",
+        category: "Problem Solving & DSA",
+        why: "Core data structure foundations and algorithmic complexity analysis.",
+        tufUrl: null,
+        leetcodeUrl: null,
+        youtubeUrl: null,
+        duration: null,
+        completed: false
+      });
+    }
+  }
+
+  // C. Add Role-Specific Technical Skills (skipping duplicate DSA additions)
   for (const hit of ruleHits) {
     for (const slug of hit.slugs) {
+      if (slug === "10-dsa-basics-data-structures" || slug === "11-dsa-a2z-solutions") continue;
       const nb = allTopics[slug];
       const meta = NOTEBOOK_META[slug] || { title: slug };
       if (!nb || !nb.sections || nb.sections.length === 0) continue;
 
-      // Pick top 2 most relevant sections from this notebook
       const selectedSecs = nb.sections.slice(0, 3);
       for (const sec of selectedSecs) {
         checklistItems.push({
@@ -369,13 +484,17 @@ export function analyzeJD(text, companyHint = "") {
           priority: hit.priority,
           category: hit.category,
           why: hit.why,
+          tufUrl: null,
+          leetcodeUrl: null,
+          youtubeUrl: null,
+          duration: null,
           completed: false
         });
       }
     }
   }
 
-  // Add Universal Interview & Behavioral Checklist Items
+  // D. Universal Interview & Behavioral Checklist Items
   const hrNb = allTopics["32-hr-interview-self-introduction"];
   if (hrNb && hrNb.sections) {
     const s = hrNb.sections[0];
@@ -389,6 +508,10 @@ export function analyzeJD(text, companyHint = "") {
       priority: "Low",
       category: "Interview Strategy",
       why: "Essential behavioral and cultural alignment preparation for tech rounds.",
+      tufUrl: null,
+      leetcodeUrl: null,
+      youtubeUrl: null,
+      duration: null,
       completed: false
     });
   }
@@ -406,13 +529,17 @@ export function analyzeJD(text, companyHint = "") {
       priority: "Medium",
       category: "Portfolio Validation",
       why: "Concrete end-to-end production project examples to discuss during technical deep-dives.",
+      tufUrl: null,
+      leetcodeUrl: null,
+      youtubeUrl: null,
+      duration: null,
       completed: false
     });
   }
 
   // 6. Compute Match Score
   const uniqueSkillsCount = detectedSkills.length;
-  const matchScore = Math.min(98, Math.max(78, 65 + uniqueSkillsCount * 4));
+  const matchScore = Math.min(98, Math.max(80, 68 + uniqueSkillsCount * 4));
 
   return {
     title,

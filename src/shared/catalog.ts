@@ -32,7 +32,7 @@ export const NOTEBOOKS: Notebook[] = [
   { slug: "16-devops", title: "DevOps: Docker, Kubernetes, Terraform", roles: ["devops", "sde", "ai", "ml", "fullstack"] },
   { slug: "17-salesforce", title: "Salesforce", roles: ["salesforce"] },
   { slug: "18-azure", title: "Microsoft Azure", roles: ["devops", "ai", "data"] },
-  { slug: "19-ai-engineer-llms", title: "AI Engineer: GenAI, LLMs, RAG, FastAPI", roles: ["ai", "ml"] },
+  { slug: "19-ai-engineer-llms", title: "AI Engineer: GenAI, LLMs, RAG, Prompt Engineering & FastAPI", roles: ["ai", "ml"] },
   { slug: "20-swe-role", title: "Software Engineer (SWE) Role Guide", roles: ["sde", "fullstack"] },
   { slug: "21-sde-role", title: "SDE Role Guide and Interview Prep", roles: ["sde"] },
   { slug: "22-ai-implementations-langchain-langgraph", title: "AI Implementations: LangChain, LangGraph, Agents", roles: ["ai"] },
@@ -51,8 +51,10 @@ export const NOTEBOOKS: Notebook[] = [
   { slug: "35-claude-anthropic-and-mcp", title: "Claude Architecture, Anthropic AI, MCP and Azure AI", roles: ["ai", "ml", "sde", "fullstack"] },
   { slug: "36-php-and-modern-backend", title: "Modern PHP 8.x, Laravel and Web Architecture", roles: ["fullstack", "sde"] },
   { slug: "37-top-tech-certifications-guide", title: "Valuable Tech Certifications Guide (Free & Paid)", roles: ALL },
-  { slug: "38-claude-101", title: "Claude 101: The Comprehensive Anthropic AI Guide", roles: ["ai", "ml", "sde", "fullstack"] },
+  { slug: "38-claude-101", title: "Claude 101: Anthropic AI & Prompt Engineering Masterclass", roles: ["ai", "ml", "sde", "fullstack"] },
   { slug: "39-quantum-computing", title: "Quantum Computing: Qubits, Circuits & Algorithms", roles: ["ai", "ml", "sde", "security"] },
+  { slug: "40-spring-boot-and-microservices", title: "Spring Boot & Microservices Enterprise Architecture", roles: ["sde", "fullstack"] },
+  { slug: "41-go-programming-and-concurrency", title: "Go Programming & Concurrency Systems Architecture", roles: ["sde", "devops", "fullstack", "security"] },
 ];
 
 export const roleLabel = (id: string) => CAREER_ROLES.find(r => r.id === id)?.label || id;

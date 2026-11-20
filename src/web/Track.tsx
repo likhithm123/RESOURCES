@@ -98,7 +98,7 @@ export default function Track() {
     <div className="card">
       <div className="row"><div style={{ flex: 1, minWidth: 220 }}>
         <h1>Hi {user?.name ? user.name.split(" ")[0] : "Student"}, here is your track sheet</h1>
-        <div className="muted small">{user ? <>Roles: {(user?.career_roles || []).map(r => CAREER_ROLES.find(x => x.id === r)?.label).filter(Boolean).join(" · ")} · <Link to="/plan">change</Link></> : <>Tracking all 39 curriculum notebooks · Progress saved locally · <Link to="/signup">Create free account</Link> to sync across devices</>}</div>
+        <div className="muted small">{user ? <>Roles: {(user?.career_roles || []).map(r => CAREER_ROLES.find(x => x.id === r)?.label).filter(Boolean).join(" · ")} · <Link to="/plan">change</Link></> : <>Tracking all {NOTEBOOKS.length} curriculum notebooks · Progress saved locally · <Link to="/signup">Create free account</Link> to sync across devices</>}</div>
       </div>
         <div className="row" style={{ gap: 20 }}>
           <div style={{ textAlign: "center" }}>
@@ -170,6 +170,9 @@ export default function Track() {
           <div style={{ flex: 1, minWidth: 160 }}>
             <h3>
               {nb.title}
+              {(nb.slug === "19-ai-engineer-llms" || nb.slug === "38-claude-101" || nb.title.toLowerCase().includes("prompt engineering")) && (
+                <span className="badge-pe" style={{ marginLeft: 8, fontSize: 11, background: "#fef3c7", color: "#92400e", border: "1px solid #fde68a", padding: "2px 8px", borderRadius: 12, fontWeight: 700 }}>Prompt Engineering Included</span>
+              )}
               {isA2Z && <span className="badge-practice" style={{ marginLeft: 8, fontSize: 11, background: "#ecfdf5", color: "#065f46", border: "1px solid #a7f3d0", padding: "2px 8px", borderRadius: 12, fontWeight: 600 }}>Practice available (Interactive TUF Sheets)</span>}
               {isDsa && !isA2Z && <span className="badge-dsa" style={{ marginLeft: 8, fontSize: 11, background: "#eff6ff", color: "#1e40af", border: "1px solid #bfdbfe", padding: "2px 8px", borderRadius: 12, fontWeight: 600 }}>Core DSA</span>}
               {needle && matchingItemsCount > 0 && <span className="chip on small" style={{ fontSize: 11, verticalAlign: "middle", marginLeft: 6 }}>{matchingItemsCount} match{matchingItemsCount !== 1 ? "es" : ""}</span>}

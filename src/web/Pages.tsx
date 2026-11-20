@@ -66,7 +66,14 @@ export function Library() {
       const isL = isMaster(d);
       return <div className="card" key={d.id} style={{ marginBottom: 0, borderTop: `4px solid ${isL ? "#1b3fae" : "#10b981"}` }}>
         <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-          <h3 style={{ margin: 0, fontSize: 16 }}>{d.title}</h3>
+          <h3 style={{ margin: 0, fontSize: 16 }}>
+            {d.title}
+            {(d.slug.includes("19-ai-engineer-llms") || d.slug.includes("38-claude-101") || d.title.toLowerCase().includes("prompt engineering")) && (
+              <span className="badge-pe" style={{ marginLeft: 8, fontSize: 10, background: "#fef3c7", color: "#92400e", border: "1px solid #fde68a", padding: "1px 6px", borderRadius: 10, fontWeight: 700, verticalAlign: "middle" }}>
+                Prompt Engineering Included
+              </span>
+            )}
+          </h3>
           <span className="tag" style={{ background: isL ? "#eff6ff" : "#ecfdf5", color: isL ? "#1e40af" : "#065f46", fontWeight: 700, fontSize: 11, flex: "none" }}>
             {isL ? "Master Edition" : "Quick Revise"}
           </span>

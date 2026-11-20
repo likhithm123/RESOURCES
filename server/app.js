@@ -627,6 +627,52 @@ app.delete("/admin/feedback/:id", async c => {
 });
 
 /* ---------------- Job Description Analyzer & Study Checklists ---------------- */
+app.post("/jd/parse-file", async c => {
+  auth(c);
+  const formData = await c.req.parseBody();
+  const file = formData["file"];
+  if (!file) fail(400, "No file uploaded.");
+  const arrayBuffer = await file.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+  const fileName = (file.name || "").toLowerCase();
+
+  let extractedText = "";
+
+  try {
+    if (fileName.endsWith(".pdf")) {
+      const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+      const pdf = await pdfjs.getDocument({ data: new Uint8Array(arrayBuffer), isEvalSupported: false }).promise;
+      const pages = [];
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        pages.push(textContent.items.map(it => it.str || "").join(" "));
+      }
+      extractedText = pages.join("\n\n");
+    } else if (fileName.endsWith(".docx")) {
+      const mammoth = await import("mammoth");
+      const res = await mammoth.extractRawText({ buffer });
+      extractedText = res.value;
+    } else if (/\.(png|jpe?g|webp|bmp)$/i.test(fileName)) {
+      const { createWorker } = await import("tesseract.js");
+      const worker = await createWorker("eng");
+      const ret = await worker.recognize(buffer);
+      await worker.terminate();
+      extractedText = ret.data.text;
+    } else {
+      extractedText = buffer.toString("utf8");
+    }
+  } catch (err) {
+    fail(500, "File parsing failed: " + (err.message || String(err)));
+  }
+
+  if (!extractedText.trim()) {
+    fail(400, "No readable text could be extracted from this file.");
+  }
+
+  return c.json({ ok: true, text: extractedText.trim() });
+});
+
 app.post("/jd/analyze", async c => {
   auth(c);
   const b = await body(c);

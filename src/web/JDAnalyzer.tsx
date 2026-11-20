@@ -133,6 +133,7 @@ export default function JDAnalyzer() {
   const [statusFilter, setStatusFilter] = useState<"All" | "Pending" | "Completed">("All");
   const [searchFilter, setSearchFilter] = useState("");
 
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imgInputRef = useRef<HTMLInputElement>(null);
 
@@ -148,6 +149,21 @@ export default function JDAnalyzer() {
     } catch (e: any) {
       console.error("Failed to load saved checklists:", e);
     }
+  }
+
+  // Server-side fallback parsing for PDF, DOCX, and images
+  async function parseFileViaServer(file: File): Promise<string> {
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch("/api/jd/parse-file", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "X-Requested-With": "portal" },
+      body: fd
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `Server file parsing failed (${res.status})`);
+    return data.text || "";
   }
 
   // Analyze text
@@ -195,14 +211,11 @@ export default function JDAnalyzer() {
     handleAnalyze(sample.text, sample.company);
   }
 
-  // Extract text from uploaded document (PDF / DOCX / TXT)
-  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  // Process uploaded document (PDF / DOCX / TXT)
+  async function processDocument(file: File) {
     setError(null);
     setParsingFile(true);
-    setParseStatus(`Reading ${file.name}...`);
+    setParseStatus(`Processing ${file.name}...`);
 
     try {
       const name = file.name.toLowerCase();
@@ -210,36 +223,39 @@ export default function JDAnalyzer() {
 
       if (name.endsWith(".pdf")) {
         setParseStatus("Extracting text from PDF via PDF.js engine...");
-        const pdfjsLib = await import("pdfjs-dist");
-        if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
-          pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version || "4.10.38"}/pdf.worker.min.mjs`;
+        try {
+          const pdfjsLib = await import("pdfjs-dist");
+          pdfjsLib.GlobalWorkerOptions.workerSrc = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url")).default;
+          const ab = await file.arrayBuffer();
+          const pdf = await pdfjsLib.getDocument({ data: ab, isEvalSupported: false } as any).promise;
+          const pageTexts: string[] = [];
+          for (let i = 1; i <= pdf.numPages; i++) {
+            setParseStatus(`Parsing PDF page ${i} of ${pdf.numPages}...`);
+            const page = await pdf.getPage(i);
+            const content = await page.getTextContent();
+            const strings = content.items.map((it: any) => it.str || "");
+            pageTexts.push(strings.join(" "));
+          }
+          extracted = pageTexts.join("\n\n");
+        } catch (clientErr: any) {
+          console.warn("Client PDF extraction failed, using server fallback:", clientErr);
+          setParseStatus("Extracting PDF text via server engine...");
+          extracted = await parseFileViaServer(file);
         }
-        const ab = await file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
-        const pageTexts: string[] = [];
-        for (let i = 1; i <= pdf.numPages; i++) {
-          setParseStatus(`Parsing PDF page ${i} of ${pdf.numPages}...`);
-          const page = await pdf.getPage(i);
-          const content = await page.getTextContent();
-          const strings = content.items.map((it: any) => it.str || "");
-          pageTexts.push(strings.join(" "));
-        }
-        extracted = pageTexts.join("\n\n");
-      } else if (name.endsWith(".docx")) {
-        setParseStatus("Parsing Word document (.docx)...");
+      } else if (name.endsWith(".docx") || name.endsWith(".doc")) {
+        setParseStatus("Parsing Word document...");
         try {
           const mammoth = await import("mammoth");
           const ab = await file.arrayBuffer();
           const res = await mammoth.extractRawText({ arrayBuffer: ab });
           extracted = res.value;
-        } catch {
-          // Fallback simple XML string extraction
-          setParseStatus("Extracting raw document text...");
-          const text = await file.text();
-          extracted = text.replace(/<[^>]+>/g, " ");
+        } catch (docxErr: any) {
+          console.warn("Client DOCX extraction failed, using server fallback:", docxErr);
+          setParseStatus("Parsing Word document via server engine...");
+          extracted = await parseFileViaServer(file);
         }
       } else {
-        // Plain text, markdown, etc.
+        // Plain text / markdown
         setParseStatus("Reading text file...");
         extracted = await file.text();
       }
@@ -260,30 +276,33 @@ export default function JDAnalyzer() {
     }
   }
 
-  // Extract text from image using OCR
-  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  // Process uploaded image (PNG / JPG / WEBP)
+  async function processImage(file: File) {
     setError(null);
     setParsingFile(true);
-    setParseStatus("Initializing OCR engine...");
+    setParseStatus("Analyzing image with OCR engine...");
 
     try {
-      const { createWorker } = await import("tesseract.js");
-      setParseStatus("Loading OCR language model...");
-      const worker = await createWorker("eng");
-      setParseStatus("Performing optical character recognition on image...");
-      const ret = await worker.recognize(file);
-      await worker.terminate();
+      let text = "";
+      try {
+        const { createWorker } = await import("tesseract.js");
+        const worker = await createWorker("eng");
+        setParseStatus("Recognizing text from image...");
+        const ret = await worker.recognize(file);
+        await worker.terminate();
+        text = ret.data.text.trim();
+      } catch (ocrClientErr: any) {
+        console.warn("Client OCR failed, trying server OCR fallback:", ocrClientErr);
+        setParseStatus("Recognizing text via server OCR engine...");
+        text = await parseFileViaServer(file);
+      }
 
-      const text = ret.data.text.trim();
       if (!text || text.length < 20) {
-        throw new Error("Could not detect sufficient text in image. Please provide a clear screenshot or paste text.");
+        throw new Error("Could not detect sufficient text in image. Please provide a clear screenshot or paste text directly.");
       }
 
       setJdText(text);
-      setParseStatus("Analyzing job description text extracted from image...");
+      setParseStatus("Analyzing job description extracted from image...");
       await handleAnalyze(text, company);
     } catch (err: any) {
       setError(err.message || "Failed to process image. Try pasting the text directly.");
@@ -292,6 +311,16 @@ export default function JDAnalyzer() {
       setParseStatus("");
       if (imgInputRef.current) imgInputRef.current.value = "";
     }
+  }
+
+  function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) processDocument(file);
+  }
+
+  function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) processImage(file);
   }
 
   // Toggle item completion
@@ -484,7 +513,18 @@ export default function JDAnalyzer() {
             )}
 
             {inputMode === "file" && (
-              <div className="jd-upload-dropzone" onClick={() => fileInputRef.current?.click()}>
+              <div
+                className={`jd-upload-dropzone ${isDragging ? "dragging" : ""}`}
+                onClick={() => fileInputRef.current?.click()}
+                onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={e => {
+                  e.preventDefault();
+                  setIsDragging(false);
+                  const file = e.dataTransfer.files?.[0];
+                  if (file) processDocument(file);
+                }}
+              >
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -501,7 +541,18 @@ export default function JDAnalyzer() {
             )}
 
             {inputMode === "image" && (
-              <div className="jd-upload-dropzone" onClick={() => imgInputRef.current?.click()}>
+              <div
+                className={`jd-upload-dropzone ${isDragging ? "dragging" : ""}`}
+                onClick={() => imgInputRef.current?.click()}
+                onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={e => {
+                  e.preventDefault();
+                  setIsDragging(false);
+                  const file = e.dataTransfer.files?.[0];
+                  if (file) processImage(file);
+                }}
+              >
                 <input
                   ref={imgInputRef}
                   type="file"

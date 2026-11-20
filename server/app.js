@@ -382,16 +382,28 @@ app.get("/admin/users/:id/detail", async c => {
   const id = Number(c.req.param("id"));
   const u = await db.first("SELECT id, name, email, role, status, career_roles, plan, phone, created_at, last_login_at FROM rp_users WHERE id = ?", [id]);
   if (!u) fail(404, "User not found.");
-  const [progress, auditRows] = await Promise.all([
+  await ensureJdTable();
+  const [progress, auditRows, checklists] = await Promise.all([
     db.all("SELECT item_id, updated_at FROM rp_progress WHERE user_id = ?", [id]),
-    db.all("SELECT substr(created_at, 1, 10) as day FROM rp_audit WHERE user_id = ? AND action IN ('auth.login', 'auth.visit')", [id])
+    db.all("SELECT substr(created_at, 1, 10) as day FROM rp_audit WHERE user_id = ? AND action IN ('auth.login', 'auth.visit')", [id]),
+    db.all("SELECT * FROM rp_job_checklists WHERE user_id = ? ORDER BY updated_at DESC", [id])
   ]);
   const progressDays = progress.map(r => r.updated_at ? r.updated_at.slice(0, 10) : "").filter(Boolean);
   const loginDays = auditRows.map(r => r.day).filter(Boolean);
   if (u.last_login_at) loginDays.push(u.last_login_at.slice(0, 10));
   const streak = calculateStreak([...progressDays, ...loginDays]);
-  const logins = await db.all("SELECT id, action, detail, ip, created_at FROM rp_audit WHERE user_id = ? AND action IN ('auth.login', 'auth.logout') ORDER BY id DESC LIMIT 20", [id]);
-  return c.json({ user: { ...u, career_roles: parse(u.career_roles, []), plan: parse(u.plan, []) }, progress: progress.map(r => r.item_id), streak, logins });
+  const logins = await db.all("SELECT id, action, detail, ip, created_at FROM rp_audit WHERE user_id = ? AND action IN ('auth.login', 'auth.logout') ORDER BY id DESC LIMIT 30", [id]);
+  return c.json({
+    user: { ...u, career_roles: parse(u.career_roles, []), plan: parse(u.plan, []) },
+    progress: progress.map(r => r.item_id),
+    streak,
+    logins,
+    checklists: checklists.map(cl => ({
+      ...cl,
+      skills: parse(cl.skills_json, []),
+      items: parse(cl.checklist_json, [])
+    }))
+  });
 });
 app.post("/admin/users/:id", async c => {
   const me = admin(c), b = await body(c), id = Number(c.req.param("id"));
@@ -488,6 +500,33 @@ app.get("/admin/audit", async c => {
       LIMIT 300
     `)
   });
+});
+
+app.get("/admin/jd-checklists", async c => {
+  admin(c);
+  await ensureJdTable();
+  const rows = await db.all(`
+    SELECT j.*, u.name AS user_name, u.email AS user_email
+    FROM rp_job_checklists j
+    LEFT JOIN rp_users u ON u.id = j.user_id
+    ORDER BY j.updated_at DESC
+    LIMIT 300
+  `);
+  return c.json({
+    checklists: rows.map(r => ({
+      ...r,
+      skills: parse(r.skills_json, []),
+      items: parse(r.checklist_json, [])
+    }))
+  });
+});
+
+app.delete("/admin/jd-checklists/:id", async c => {
+  admin(c);
+  await ensureJdTable();
+  const id = Number(c.req.param("id"));
+  await db.run("DELETE FROM rp_job_checklists WHERE id = ?", [id]);
+  return c.json({ ok: true });
 });
 
 /* ---------------- Team members (public list + admin CMS) ---------------- */

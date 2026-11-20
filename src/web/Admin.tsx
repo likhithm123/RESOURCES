@@ -4,7 +4,32 @@ import { api, type Doc } from "./api";
 import { Msg, RoleChips } from "./App";
 import { NOTEBOOKS, roleLabel } from "../shared/catalog";
 
-const TABS = ["Overview", "Documents", "Certifications", "Feedback", "Site Settings", "Resources & Projects", "Connect", "Users", "Team", "Audit Logs"] as const;
+export function formatTime(ts: string | number | null | undefined): string {
+  if (!ts) return "—";
+  let s = String(ts).trim();
+  if (!s) return "—";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    const [y, m, d] = s.split("-");
+    const dt = new Date(Number(y), Number(m) - 1, Number(d));
+    return dt.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  }
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(s)) {
+    s = s.replace(" ", "T") + "Z";
+  }
+  const d = new Date(s);
+  if (isNaN(d.getTime())) return String(ts);
+  return d.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true
+  });
+}
+
+const TABS = ["Overview", "Documents", "Certifications", "Feedback", "Site Settings", "Resources & Projects", "Connect", "Users", "JD Checklists", "Team", "Audit Logs"] as const;
 
 export default function Admin() {
   const [tab, setTab] = useState<(typeof TABS)[number]>("Overview");
@@ -19,6 +44,7 @@ export default function Admin() {
     {tab === "Resources & Projects" && <LinksAdmin />}
     {tab === "Connect" && <ConnectAdmin />}
     {tab === "Users" && <Users />}
+    {tab === "JD Checklists" && <JDChecklistsAdmin />}
     {tab === "Team" && <TeamAdmin />}
     {tab === "Audit Logs" && <AuditLogsAdmin />}
   </>;
@@ -159,7 +185,7 @@ function ConnectAdmin() {
   return <>
     <Msg>{err}</Msg>{!posts.length && <div className="card">No posts yet.</div>}
     {posts.map(p => <div className="card" key={p.id}>
-      <div className="row"><span className="tag">{p.status}</span><span className="tag">{p.kind}</span><b>{p.company}</b><span className="small muted">{p.user_email}</span></div>
+      <div className="row"><span className="tag">{p.status}</span><span className="tag">{p.kind}</span><b>{p.company}</b><span className="small muted">{p.user_email}</span><span className="small muted right">{formatTime(p.created_at)}</span></div>
       <h3 style={{ margin: "8px 0" }}>{p.title}</h3><p className="small" style={{ whiteSpace: "pre-wrap" }}>{p.body}</p>
       <div className="row">{p.status !== "approved" && <button className="sm primary" onClick={() => act(p.id, { status: "approved" })}>Approve</button>}
         {p.status !== "rejected" && <button className="sm" onClick={() => act(p.id, { status: "rejected" })}>Reject</button>}
@@ -173,6 +199,9 @@ function Users() {
   const [detail, setDetail] = useState<any>(null); const [progress, setProgress] = useState<string[]>([]);
   const [userStreak, setUserStreak] = useState<any>(null);
   const [logins, setLogins] = useState<any[]>([]);
+  const [userChecklists, setUserChecklists] = useState<any[]>([]);
+  const [expandedChecklistId, setExpandedChecklistId] = useState<number | null>(null);
+
   const load = () => api("/admin/users").then(r => setUsers(r.users)).catch(e => setErr(e.message));
   useEffect(() => { load(); }, []);
   const act = async (id: number, b: any) => { setErr(""); await api(`/admin/users/${id}`, "POST", b).catch(e => setErr(e.message)); load(); };
@@ -181,6 +210,7 @@ function Users() {
     try {
       const r = await api(`/admin/users/${id}/detail`);
       setDetail(r.user); setProgress(r.progress); setLogins(r.logins || []); setUserStreak(r.streak || null);
+      setUserChecklists(r.checklists || []); setExpandedChecklistId(null);
     } catch (e: any) { setErr(e.message); }
   }
   return <>
@@ -192,8 +222,8 @@ function Users() {
         <div><span className="muted small">Phone:</span> {detail.phone || "—"}</div>
         <div><span className="muted small">Role:</span> <span className="tag">{detail.role}</span></div>
         <div><span className="muted small">Status:</span> <span className="tag">{detail.status}</span></div>
-        <div><span className="muted small">Joined:</span> {detail.created_at}</div>
-        <div><span className="muted small">Last sign-in:</span> {detail.last_login_at || "—"}</div>
+        <div><span className="muted small">Joined:</span> {formatTime(detail.created_at)}</div>
+        <div><span className="muted small">Last sign-in:</span> {formatTime(detail.last_login_at)}</div>
       </div>
       <div style={{ marginTop: 12 }}><span className="muted small">Selected roles:</span>
         <div className="chips" style={{ marginTop: 4 }}>{(detail.career_roles || []).map((r: string) => <span className="chip on" key={r}>{roleLabel(r)}</span>)}{!(detail.career_roles || []).length && <span className="muted small">None selected</span>}</div>
@@ -220,7 +250,101 @@ function Users() {
         <span className="muted small">Active days ({userStreak.days.length}): </span>
         <span className="small">{userStreak.days.slice(-10).join(", ")}{userStreak.days.length > 10 ? "..." : ""}</span>
       </div>}
-      {!!logins.length && <div style={{ marginTop: 16 }}>
+
+      {/* User's JD Checklists & Details */}
+      <div style={{ marginTop: 20, paddingTop: 16, borderTop: "1px solid var(--line)" }}>
+        <h3>Job Description Checklists & Target Roles ({userChecklists.length})</h3>
+        {!userChecklists.length ? (
+          <p className="muted small">No JD checklists generated by this user yet.</p>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 10 }}>
+            {userChecklists.map(cl => {
+              const done = (cl.items || []).filter((i: any) => i.completed).length;
+              const total = (cl.items || []).length;
+              const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+              const isExpanded = expandedChecklistId === cl.id;
+
+              return (
+                <div key={cl.id} className="card" style={{ margin: 0, padding: 14, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
+                  <div className="row" style={{ alignItems: "flex-start", gap: 10 }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 4 }}>
+                        <b style={{ fontSize: 16 }}>{cl.title}</b>
+                        {cl.company && <span className="tag" style={{ background: "#fef3c7", color: "#92400e" }}>{cl.company}</span>}
+                        <span className="tag primary">{cl.role_detected}</span>
+                        <span className="tag ok">{cl.match_score}% Match</span>
+                      </div>
+                      <div className="small muted">
+                        Progress: <b>{done}</b> / <b>{total}</b> topics completed ({pct}%) · Updated: {formatTime(cl.updated_at)}
+                      </div>
+                      <div style={{ width: "100%", height: 6, background: "#e2e8f0", borderRadius: 9999, overflow: "hidden", margin: "8px 0" }}>
+                        <div style={{ width: `${pct}%`, height: "100%", background: "#10b981", transition: "width 0.3s" }} />
+                      </div>
+                      <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 4 }}>
+                        {(cl.skills || []).map((s: string, idx: number) => (
+                          <span key={idx} style={{ fontSize: 11, background: "#ffffff", border: "1px solid #cbd5e1", borderRadius: 4, padding: "2px 6px", color: "#475569" }}>
+                            {s}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <button
+                      className="sm"
+                      onClick={() => setExpandedChecklistId(isExpanded ? null : cl.id)}
+                    >
+                      {isExpanded ? "Hide Details" : "View Full JD & Topics"}
+                    </button>
+                  </div>
+
+                  {isExpanded && (
+                    <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid #e2e8f0" }}>
+                      {cl.raw_text && (
+                        <div style={{ marginBottom: 12 }}>
+                          <div className="small muted" style={{ fontWeight: 700, marginBottom: 4 }}>Raw Job Description Ingested:</div>
+                          <div style={{ maxHeight: 160, overflowY: "auto", background: "#ffffff", padding: "10px 12px", border: "1px solid #cbd5e1", borderRadius: 6, fontSize: 12, whiteSpace: "pre-wrap", fontFamily: "monospace", color: "#334155" }}>
+                            {cl.raw_text}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="small muted" style={{ fontWeight: 700, marginBottom: 6 }}>All Checklist Topics ({(cl.items || []).length}):</div>
+                      <div style={{ maxHeight: 260, overflowY: "auto", background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 6 }}>
+                        <table style={{ margin: 0, fontSize: 12 }}>
+                          <thead>
+                            <tr>
+                              <th style={{ width: 45 }}>Status</th>
+                              <th>Topic</th>
+                              <th>Category</th>
+                              <th>Priority</th>
+                              <th>Links</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(cl.items || []).map((it: any) => (
+                              <tr key={it.id} style={{ background: it.completed ? "#f0fdf4" : "transparent" }}>
+                                <td style={{ textAlign: "center" }}>{it.completed ? "[x]" : "[ ]"}</td>
+                                <td><b style={{ textDecoration: it.completed ? "line-through" : "none", color: it.completed ? "#64748b" : "#0f172a" }}>{it.topic}</b></td>
+                                <td><span className="small muted">{it.category}</span></td>
+                                <td><span className={`tag ${it.priority === "High" ? "err" : it.priority === "Medium" ? "" : "ok"}`} style={{ fontSize: 10 }}>{it.priority}</span></td>
+                                <td style={{ whiteSpace: "nowrap" }}>
+                                  {it.tufUrl && <a href={it.tufUrl} target="_blank" rel="noopener noreferrer" className="small" style={{ marginRight: 6 }}>TUF ↗</a>}
+                                  {it.leetcodeUrl && <a href={it.leetcodeUrl} target="_blank" rel="noopener noreferrer" className="small">LeetCode ↗</a>}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {!!logins.length && <div style={{ marginTop: 20, paddingTop: 16, borderTop: "1px solid var(--line)" }}>
         <h3>Recent sign-in history</h3>
         <table>
           <thead><tr><th>Event</th><th>IP</th><th>Time</th></tr></thead>
@@ -228,7 +352,7 @@ function Users() {
             {logins.map((l: any) => <tr key={l.id}>
               <td><span className={`tag ${l.action === "auth.login" ? "primary" : ""}`}>{l.action === "auth.login" ? "Sign in" : "Sign out"}</span></td>
               <td className="small">{l.ip || "—"}</td>
-              <td className="small">{l.created_at}</td>
+              <td className="small">{formatTime(l.created_at)}</td>
             </tr>)}
           </tbody>
         </table>
@@ -246,12 +370,191 @@ function Users() {
         </td>
         <td><span className="tag">{u.status}</span></td>
         <td>{u.role}</td>
-        <td className="small">{u.last_login_at || "-"}</td>
+        <td className="small">{formatTime(u.last_login_at)}</td>
         <td><div className="row">
           <button className="sm" onClick={() => act(u.id, { action: "role", role: u.role === "admin" ? "student" : "admin" })}>{u.role === "admin" ? "Remove admin" : "Make admin"}</button>
           <button className="sm" onClick={() => act(u.id, { action: u.status === "blocked" ? "unblock" : "block" })}>{u.status === "blocked" ? "Unblock" : "Block"}</button>
           <button className="sm danger" onClick={() => confirm(`Delete ${u.email}?`) && act(u.id, { action: "delete" })}>Delete</button></div></td></tr>)}
     </tbody></table></div>
+  </>;
+}
+
+/* ---------------- All Users JD Checklists CMS ---------------- */
+function JDChecklistsAdmin() {
+  const [checklists, setChecklists] = useState<any[]>([]);
+  const [err, setErr] = useState("");
+  const [q, setQ] = useState("");
+  const [roleFilter, setRoleFilter] = useState("All");
+  const [selectedCl, setSelectedCl] = useState<any>(null);
+
+  const load = () => api("/admin/jd-checklists").then(r => setChecklists(r.checklists || [])).catch(e => setErr(e.message));
+  useEffect(() => { load(); }, []);
+
+  async function deleteCl(id: number, title: string) {
+    if (!confirm(`Delete checklist "${title}"? This cannot be undone.`)) return;
+    try {
+      await api(`/admin/jd-checklists/${id}`, "DELETE");
+      setChecklists(prev => prev.filter(c => c.id !== id));
+      if (selectedCl?.id === id) setSelectedCl(null);
+    } catch (e: any) { setErr(e.message); }
+  }
+
+  const needle = q.toLowerCase();
+  const shown = checklists.filter(c => {
+    if (roleFilter !== "All" && c.role_detected !== roleFilter) return false;
+    if (!needle) return true;
+    return [c.title, c.company, c.role_detected, c.user_name, c.user_email].join(" ").toLowerCase().includes(needle);
+  });
+
+  const roles = ["All", ...new Set(checklists.map(c => c.role_detected).filter(Boolean))];
+
+  return <>
+    <Msg>{err}</Msg>
+
+    {/* Detail View Drawer */}
+    {selectedCl && (
+      <div className="card" style={{ marginBottom: 16, borderLeft: "5px solid #2563eb", background: "#f8fafc" }}>
+        <div className="row" style={{ alignItems: "flex-start", marginBottom: 10 }}>
+          <div style={{ flex: 1 }}>
+            <h2 style={{ margin: "0 0 4px" }}>{selectedCl.title}</h2>
+            <div className="small muted">
+              User: <b>{selectedCl.user_name || "Unknown"}</b> ({selectedCl.user_email}) · Created: {formatTime(selectedCl.created_at)} · Updated: {formatTime(selectedCl.updated_at)}
+            </div>
+          </div>
+          <button className="sm" onClick={() => setSelectedCl(null)}>Close</button>
+        </div>
+
+        <div className="row" style={{ gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+          {selectedCl.company && <span className="tag" style={{ background: "#fef3c7", color: "#92400e" }}>{selectedCl.company}</span>}
+          <span className="tag primary">{selectedCl.role_detected}</span>
+          <span className="tag ok">{selectedCl.match_score}% Match Score</span>
+          <span className="tag">{(selectedCl.items || []).length} Topics</span>
+        </div>
+
+        <div style={{ marginBottom: 14 }}>
+          <div className="small muted" style={{ fontWeight: 700, marginBottom: 4 }}>Skills Detected:</div>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {(selectedCl.skills || []).map((s: string, idx: number) => (
+              <span key={idx} style={{ fontSize: 12, background: "#ffffff", border: "1px solid #cbd5e1", borderRadius: 4, padding: "2px 8px", color: "#334155" }}>
+                {s}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {selectedCl.raw_text && (
+          <div style={{ marginBottom: 14 }}>
+            <div className="small muted" style={{ fontWeight: 700, marginBottom: 4 }}>Ingested Job Description Text:</div>
+            <div style={{ maxHeight: 180, overflowY: "auto", background: "#ffffff", padding: "10px 12px", border: "1px solid #cbd5e1", borderRadius: 6, fontSize: 12, whiteSpace: "pre-wrap", fontFamily: "monospace", color: "#334155" }}>
+              {selectedCl.raw_text}
+            </div>
+          </div>
+        )}
+
+        <div>
+          <div className="small muted" style={{ fontWeight: 700, marginBottom: 6 }}>
+            Checklist Topics & Progress ({(selectedCl.items || []).filter((i: any) => i.completed).length} / {(selectedCl.items || []).length} completed):
+          </div>
+          <div style={{ maxHeight: 300, overflowY: "auto", background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 6 }}>
+            <table style={{ margin: 0, fontSize: 12 }}>
+              <thead>
+                <tr>
+                  <th style={{ width: 45 }}>Status</th>
+                  <th>Topic</th>
+                  <th>Category</th>
+                  <th>Priority</th>
+                  <th>Links</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(selectedCl.items || []).map((it: any) => (
+                  <tr key={it.id} style={{ background: it.completed ? "#f0fdf4" : "transparent" }}>
+                    <td style={{ textAlign: "center" }}>{it.completed ? "[x]" : "[ ]"}</td>
+                    <td><b style={{ textDecoration: it.completed ? "line-through" : "none", color: it.completed ? "#64748b" : "#0f172a" }}>{it.topic}</b></td>
+                    <td><span className="small muted">{it.category}</span></td>
+                    <td><span className={`tag ${it.priority === "High" ? "err" : it.priority === "Medium" ? "" : "ok"}`} style={{ fontSize: 10 }}>{it.priority}</span></td>
+                    <td style={{ whiteSpace: "nowrap" }}>
+                      {it.tufUrl && <a href={it.tufUrl} target="_blank" rel="noopener noreferrer" className="small" style={{ marginRight: 6 }}>TUF ↗</a>}
+                      {it.leetcodeUrl && <a href={it.leetcodeUrl} target="_blank" rel="noopener noreferrer" className="small">LeetCode ↗</a>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Search & Filter Bar */}
+    <div className="row" style={{ marginBottom: 12, gap: 10 }}>
+      <input
+        placeholder="Search by user, email, company, role, or title..."
+        value={q}
+        onChange={e => setQ(e.target.value)}
+        style={{ flex: 1, minWidth: 240 }}
+      />
+      <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)} style={{ width: 220 }}>
+        {roles.map(r => <option key={r} value={r}>{r === "All" ? "All Engineering Roles" : r}</option>)}
+      </select>
+      <button className="sm" onClick={load}>Refresh</button>
+    </div>
+
+    {/* Checklists Table */}
+    <div className="card">
+      <h2>All User Job Checklists ({shown.length})</h2>
+      {!shown.length && <p className="muted small">No job checklists found matching criteria.</p>}
+      {!!shown.length && <table>
+        <thead>
+          <tr>
+            <th>User</th>
+            <th>Checklist Title</th>
+            <th>Company</th>
+            <th>Role</th>
+            <th>Progress</th>
+            <th>Updated</th>
+            <th />
+          </tr>
+        </thead>
+        <tbody>
+          {shown.map((cl: any) => {
+            const done = (cl.items || []).filter((i: any) => i.completed).length;
+            const total = (cl.items || []).length;
+            const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+
+            return (
+              <tr key={cl.id}>
+                <td>
+                  <b>{cl.user_name || "Unknown"}</b>
+                  <div className="small muted">{cl.user_email}</div>
+                </td>
+                <td>
+                  <b style={{ cursor: "pointer", textDecoration: "underline" }} onClick={() => setSelectedCl(cl)}>
+                    {cl.title}
+                  </b>
+                  <div className="small muted">{cl.match_score}% Match</div>
+                </td>
+                <td>{cl.company || "—"}</td>
+                <td><span className="tag primary" style={{ fontSize: 11 }}>{cl.role_detected}</span></td>
+                <td>
+                  <span className="tag ok" style={{ fontSize: 11 }}>{done}/{total} ({pct}%)</span>
+                  <div style={{ width: 80, height: 4, background: "#e2e8f0", borderRadius: 9999, overflow: "hidden", marginTop: 4 }}>
+                    <div style={{ width: `${pct}%`, height: "100%", background: "#10b981" }} />
+                  </div>
+                </td>
+                <td className="small" style={{ whiteSpace: "nowrap" }}>{formatTime(cl.updated_at)}</td>
+                <td>
+                  <div className="row" style={{ gap: 6 }}>
+                    <button className="sm" onClick={() => setSelectedCl(cl)}>View Details</button>
+                    <button className="sm err" onClick={() => deleteCl(cl.id, cl.title)}>Delete</button>
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>}
+    </div>
   </>;
 }
 
@@ -345,7 +648,7 @@ function AuditLogsAdmin() {
         <tbody>
           {shown.map((l: any) => (
             <tr key={l.id}>
-              <td className="small" style={{ whiteSpace: "nowrap" }}>{l.created_at}</td>
+              <td className="small" style={{ whiteSpace: "nowrap" }}>{formatTime(l.created_at)}</td>
               <td>
                 {l.email ? (
                   <>
@@ -404,7 +707,7 @@ function FeedbackAdmin() {
           <span className={`tag ${f.status === "new" ? "err" : "ok"}`}>{f.status.toUpperCase()}</span>
           <span className="tag">{f.category}</span>
           <b>{f.name}</b> <span className="small muted">({f.email})</span>
-          <span className="small muted right">{f.created_at}</span>
+          <span className="small muted right">{formatTime(f.created_at)}</span>
         </div>
         <div style={{ whiteSpace: "pre-wrap", background: "#f8f9fa", padding: "10px 14px", borderRadius: 6, margin: "8px 0" }}>
           {f.message}

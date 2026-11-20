@@ -167,11 +167,28 @@ app.put("/me", async c => {
 /* ---------------- Progress (track sheet) ---------------- */
 app.get("/progress", async c => {
   const u = auth(c);
-  const doneRows = await db.all("SELECT item_id, updated_at FROM rp_progress WHERE user_id = ?", [u.id]);
-  const days = doneRows.map(r => r.updated_at ? r.updated_at.slice(0, 10) : "").filter(Boolean);
+  const today = new Date().toISOString().slice(0, 10);
+  
+  // Record daily activity so visiting/logging in updates the streak
+  await db.run(
+    "INSERT OR IGNORE INTO rp_audit (user_id, action, detail, ip, created_at) " +
+    "SELECT ?, 'auth.login', 'Daily portal visit', ?, datetime('now') " +
+    "WHERE NOT EXISTS (SELECT 1 FROM rp_audit WHERE user_id = ? AND action IN ('auth.login', 'auth.visit') AND substr(created_at, 1, 10) = ?)",
+    [u.id, clientIp(c), u.id, today]
+  );
+
+  const [doneRows, auditRows] = await Promise.all([
+    db.all("SELECT item_id, updated_at FROM rp_progress WHERE user_id = ?", [u.id]),
+    db.all("SELECT substr(created_at, 1, 10) as day FROM rp_audit WHERE user_id = ? AND action IN ('auth.login', 'auth.visit')", [u.id])
+  ]);
+  const progressDays = doneRows.map(r => r.updated_at ? r.updated_at.slice(0, 10) : "").filter(Boolean);
+  const loginDays = auditRows.map(r => r.day).filter(Boolean);
+  if (u.last_login_at) loginDays.push(u.last_login_at.slice(0, 10));
+
+  const allDays = Array.from(new Set([...progressDays, ...loginDays]));
   return c.json({
     done: doneRows.map(r => r.item_id),
-    streak: calculateStreak(days)
+    streak: calculateStreak(allDays)
   });
 });
 app.post("/progress", async c => {
@@ -328,17 +345,24 @@ app.get("/admin/stats", async c => {
 app.get("/admin/users", async c => {
   admin(c);
   const users = await db.all("SELECT id, name, email, role, status, career_roles, phone, created_at, last_login_at FROM rp_users ORDER BY id DESC LIMIT 1000");
-  const progressRows = await db.all("SELECT user_id, substr(updated_at, 1, 10) as day FROM rp_progress");
+  const [progressRows, auditRows] = await Promise.all([
+    db.all("SELECT user_id, substr(updated_at, 1, 10) as day FROM rp_progress"),
+    db.all("SELECT user_id, substr(created_at, 1, 10) as day FROM rp_audit WHERE action IN ('auth.login', 'auth.visit')")
+  ]);
   const userDays = new Map();
-  for (const r of progressRows) {
-    if (!r.day) continue;
+  for (const r of [...progressRows, ...auditRows]) {
+    if (!r.day || !r.user_id) continue;
     if (!userDays.has(r.user_id)) userDays.set(r.user_id, []);
     userDays.get(r.user_id).push(r.day);
   }
-  const usersWithStreaks = users.map(u => ({
-    ...u,
-    streak: calculateStreak(userDays.get(u.id) || [])
-  }));
+  const usersWithStreaks = users.map(u => {
+    const days = userDays.get(u.id) || [];
+    if (u.last_login_at) days.push(u.last_login_at.slice(0, 10));
+    return {
+      ...u,
+      streak: calculateStreak(days)
+    };
+  });
   return c.json({ users: usersWithStreaks });
 });
 app.get("/admin/users/:id/detail", async c => {
@@ -346,9 +370,14 @@ app.get("/admin/users/:id/detail", async c => {
   const id = Number(c.req.param("id"));
   const u = await db.first("SELECT id, name, email, role, status, career_roles, plan, phone, created_at, last_login_at FROM rp_users WHERE id = ?", [id]);
   if (!u) fail(404, "User not found.");
-  const progress = await db.all("SELECT item_id, updated_at FROM rp_progress WHERE user_id = ?", [id]);
-  const days = progress.map(r => r.updated_at ? r.updated_at.slice(0, 10) : "").filter(Boolean);
-  const streak = calculateStreak(days);
+  const [progress, auditRows] = await Promise.all([
+    db.all("SELECT item_id, updated_at FROM rp_progress WHERE user_id = ?", [id]),
+    db.all("SELECT substr(created_at, 1, 10) as day FROM rp_audit WHERE user_id = ? AND action IN ('auth.login', 'auth.visit')", [id])
+  ]);
+  const progressDays = progress.map(r => r.updated_at ? r.updated_at.slice(0, 10) : "").filter(Boolean);
+  const loginDays = auditRows.map(r => r.day).filter(Boolean);
+  if (u.last_login_at) loginDays.push(u.last_login_at.slice(0, 10));
+  const streak = calculateStreak([...progressDays, ...loginDays]);
   const logins = await db.all("SELECT id, action, detail, ip, created_at FROM rp_audit WHERE user_id = ? AND action IN ('auth.login', 'auth.logout') ORDER BY id DESC LIMIT 20", [id]);
   return c.json({ user: { ...u, career_roles: parse(u.career_roles, []), plan: parse(u.plan, []) }, progress: progress.map(r => r.item_id), streak, logins });
 });

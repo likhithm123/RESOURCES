@@ -9,35 +9,78 @@ export function Library() {
   const { user } = useAuth();
   const [docs, setDocs] = useState<Doc[] | null>(null);
   const [all, setAll] = useState(false);
+  const [role, setRole] = useState("");
+  const [edition, setEdition] = useState<"all" | "master" | "short">("all");
+  const [q, setQ] = useState("");
   const [err, setErr] = useState("");
 
   useEffect(() => {
     api("/docs").then(r => setDocs(r.docs)).catch(e => setErr(e.message));
   }, []);
 
-  const isMaster = (d: Doc) => d.slug.includes("-master") || d.slug.includes("-long");
+  const isMaster = (d: Doc) => d.slug.endsWith("-master") || d.slug.endsWith("-long");
 
-  const shown = (docs || []).filter(d => all || !d.career_roles.length || (user ? d.career_roles.some(r => user.career_roles.includes(r)) : true));
+  const needle = q.trim().toLowerCase();
+  const shown = (docs || []).filter(d => {
+    const master = isMaster(d);
+    if (edition === "master" && !master) return false;
+    if (edition === "short" && master) return false;
+    if (role && !d.career_roles.includes(role)) return false;
+    if (!all && !role && user && user.career_roles?.length && !d.career_roles.some(r => user.career_roles.includes(r))) return false;
+    if (needle && ![d.title, d.description, d.slug].join(" ").toLowerCase().includes(needle)) return false;
+    return true;
+  });
 
   return <>
-    <div className="row"><h1 style={{ flex: 1 }}>Notes</h1><label className="row small"><input type="checkbox" checked={all} onChange={e => setAll(e.target.checked)} /> Show notes for all roles</label></div>
-    <p className="muted">Handwritten-style notebooks for each role.</p>
+    <div className="row" style={{ alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+      <h1 style={{ margin: 0 }}>Notes Library</h1>
+      <label className="row small" style={{ cursor: "pointer", userSelect: "none" }}>
+        <input type="checkbox" checked={all} onChange={e => setAll(e.target.checked)} /> Show notes for all roles
+      </label>
+    </div>
+    <p className="muted">Handwritten-style comprehensive notes. Choose between rapid Quick Revision notes and complete Master Deep-Dive editions (100+ pages).</p>
     <Msg>{err}</Msg>
-    {docs && !shown.length && <div className="card">No notes published for your roles yet.</div>}
+
+    <div className="row" style={{ gap: 10, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
+      <input
+        placeholder="Search notes (e.g. C++, DSA, System Design, FastAPI, Docker, SQL)..."
+        value={q}
+        onChange={e => setQ(e.target.value)}
+        style={{ flex: 1, minWidth: 240 }}
+        aria-label="Search notes"
+      />
+      <select value={role} onChange={e => setRole(e.target.value)} style={{ width: 220 }} aria-label="Filter notes by role">
+        <option value="">All Career Roles</option>
+        {CAREER_ROLES.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
+      </select>
+      <div className="row small" style={{ gap: 6 }}>
+        <button type="button" className={`sm ${edition === "all" ? "primary" : ""}`} onClick={() => setEdition("all")}>All Editions ({docs ? docs.length : 0})</button>
+        <button type="button" className={`sm ${edition === "master" ? "primary" : ""}`} onClick={() => setEdition("master")}>Master Long ({docs ? docs.filter(isMaster).length : 0})</button>
+        <button type="button" className={`sm ${edition === "short" ? "primary" : ""}`} onClick={() => setEdition("short")}>Quick Short ({docs ? docs.filter(d => !isMaster(d)).length : 0})</button>
+      </div>
+    </div>
+
+    {docs && !shown.length && <div className="card">No matching notes found. Try adjusting your search query or role filter.</div>}
+    
     <div className="grid">{shown.map(d => {
       const isL = isMaster(d);
-      const pdfUrl = isL
-        ? `https://ik.imagekit.io/likhi/resources-portal/long-pdfs/${d.slug}.pdf`
-        : `https://ik.imagekit.io/likhi/resources-portal/pdfs/${d.slug}.pdf`;
-      return <div className="card" key={d.id} style={{ marginBottom: 0, borderColor: isL ? "var(--ink)" : undefined }}>
+      return <div className="card" key={d.id} style={{ marginBottom: 0, borderTop: `4px solid ${isL ? "#1b3fae" : "#10b981"}` }}>
         <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-          <h3 style={{ margin: 0 }}>{d.title}</h3>
-          {isL && <span className="tag" style={{ background: "#e8f5e9", color: "#1b5e20", fontWeight: 700, fontSize: 11 }}>Master Edition</span>}
+          <h3 style={{ margin: 0, fontSize: 16 }}>{d.title}</h3>
+          <span className="tag" style={{ background: isL ? "#eff6ff" : "#ecfdf5", color: isL ? "#1e40af" : "#065f46", fontWeight: 700, fontSize: 11, flex: "none" }}>
+            {isL ? "Master Edition" : "Quick Revise"}
+          </span>
         </div>
-        <p className="small muted" style={{ marginTop: 8 }}>{d.description || `${d.pages} pages`}</p>
-        <div className="row" style={{ gap: 8, alignItems: "center", marginTop: 12 }}>
-          <a className="btn primary sm" href={`/read/${d.slug}`} target="_blank" rel="noopener noreferrer">Read notes</a>
-          <span className="small muted" style={{ fontWeight: 600 }}>{d.pages} pages</span>
+        <p className="small muted" style={{ marginTop: 8, lineHeight: 1.5 }}>{d.description || `${d.pages} pages deep dive notes`}</p>
+        <div className="row" style={{ gap: 6, flexWrap: "wrap", marginTop: 8 }}>
+          {d.career_roles.slice(0, 4).map(r => <span className="tag" key={r} style={{ fontSize: 10 }}>{roleLabel(r)}</span>)}
+          {d.career_roles.length > 4 && <span className="tag" style={{ fontSize: 10 }}>+{d.career_roles.length - 4} more</span>}
+        </div>
+        <div className="row" style={{ gap: 8, alignItems: "center", marginTop: 14 }}>
+          <a className="btn primary sm" href={`/read/${d.slug}`} target="_blank" rel="noopener noreferrer">
+            {isL ? "Open Master Notes" : "Open Quick Notes"}
+          </a>
+          <span className="small muted" style={{ fontWeight: 600, marginLeft: "auto" }}>{d.pages} pages</span>
         </div>
       </div>;
     })}</div>
@@ -45,23 +88,78 @@ export function Library() {
 }
 
 export function Links({ kind }: { kind: "resource" | "project" }) {
-  const { user } = useAuth(); const [links, setLinks] = useState<any[] | null>(null); const [role, setRole] = useState(""); const [err, setErr] = useState("");
-  useEffect(() => { api("/links").then(r => setLinks(r.links)).catch(e => setErr(e.message)); }, []);
-  const shown = (links || []).filter(l => l.kind === kind && (!role || l.career_roles.includes(role)));
+  const { user } = useAuth();
+  const [links, setLinks] = useState<any[] | null>(null);
+  const [role, setRole] = useState("");
+  const [q, setQ] = useState("");
+  const [err, setErr] = useState("");
+
+  useEffect(() => {
+    api("/links").then(r => setLinks(r.links)).catch(e => setErr(e.message));
+  }, []);
+
+  const needle = q.trim().toLowerCase();
+  const shown = (links || []).filter(l => {
+    if (l.kind !== kind) return false;
+    if (role && !l.career_roles.includes(role)) return false;
+    if (needle && ![l.title, l.description, l.category, l.url].join(" ").toLowerCase().includes(needle)) return false;
+    return true;
+  });
+
   const groups = [...new Set(shown.map(l => l.category || "General"))];
+
   return <>
-    <div className="row"><h1 style={{ flex: 1 }}>{kind === "resource" ? "Resources" : "Projects"}</h1>
-      <select style={{ width: 240 }} value={role} onChange={e => setRole(e.target.value)} aria-label="Filter by role"><option value="">All roles</option>{CAREER_ROLES.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}</select></div>
-    <p className="muted">{kind === "resource" ? "Hand-picked links: practice sheets, docs, videos and tools." : "Project ideas that add real weight to a resume, with what to build and what you will learn."}</p>
+    <div className="row" style={{ alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+      <h1 style={{ margin: 0 }}>{kind === "resource" ? "Curated Resources" : "Resume-Grade Projects"}</h1>
+      <select style={{ width: 240 }} value={role} onChange={e => setRole(e.target.value)} aria-label="Filter by role">
+        <option value="">All Career Roles</option>
+        {CAREER_ROLES.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
+      </select>
+    </div>
+    <p className="muted">
+      {kind === "resource"
+        ? "Hand-picked, production-grade tools, interactive practice sheets, official documentation, and architectural guides."
+        : "Industry-standard open-source repositories and portfolio projects that carry genuine weight on a software engineering resume."}
+    </p>
     <Msg>{err}</Msg>
-    {links && !shown.length && <div className="card">Nothing here yet{user?.role === "admin" ? " - add some from the Admin tab." : "."}</div>}
-    {groups.map(g => <div key={g}><h2 style={{ marginTop: 18 }}>{g}</h2><div className="grid">{shown.filter(l => (l.category || "General") === g).map(l =>
-      <div className="card" key={l.id} style={{ marginBottom: 0 }}>
-        <h3>{l.title}</h3>
-        <p className="small" style={{ whiteSpace: "pre-wrap" }}>{l.description}</p>
-        <div className="row">{l.url && <a className="btn sm primary" href={l.url} target="_blank" rel="noopener noreferrer">Open ↗</a>}
-          {l.career_roles.map((r: string) => <span className="tag" key={r}>{roleLabel(r)}</span>)}</div>
-      </div>)}</div></div>)}
+
+    <div className="row" style={{ marginBottom: 16 }}>
+      <input
+        placeholder={`Search ${kind === "resource" ? "resources (e.g. LeetCode, Kubernetes, System Design, OWASP)" : "projects (e.g. Microservices, RAG, CRDT, LlamaIndex, Argo CD)"}...`}
+        value={q}
+        onChange={e => setQ(e.target.value)}
+        style={{ flex: 1, minWidth: 260 }}
+        aria-label={`Search ${kind === "resource" ? "resources" : "projects"}`}
+      />
+    </div>
+
+    {links && !shown.length && <div className="card">No {kind === "resource" ? "resources" : "projects"} matching your filter.</div>}
+
+    {groups.map(g => (
+      <div key={g}>
+        <h2 style={{ marginTop: 24, marginBottom: 12, fontSize: 18, color: "var(--ink)" }}>{g}</h2>
+        <div className="grid">
+          {shown.filter(l => (l.category || "General") === g).map(l => (
+            <div className="card" key={l.id} style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", marginBottom: 0 }}>
+              <div>
+                <h3 style={{ margin: "0 0 8px", fontSize: 16 }}>{l.title}</h3>
+                <p className="small muted" style={{ lineHeight: 1.5, margin: 0 }}>{l.description}</p>
+              </div>
+              <div style={{ marginTop: 16 }}>
+                <div className="row" style={{ gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+                  {l.career_roles.map((r: string) => <span className="tag" key={r} style={{ fontSize: 11 }}>{roleLabel(r)}</span>)}
+                </div>
+                {l.url && (
+                  <a className="btn sm primary" href={l.url} target="_blank" rel="noopener noreferrer" style={{ display: "inline-block" }}>
+                    {kind === "project" ? "View GitHub Repository ↗" : "Open Resource ↗"}
+                  </a>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    ))}
   </>;
 }
 

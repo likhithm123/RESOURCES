@@ -124,6 +124,9 @@ export default function JDAnalyzer() {
     seniority: string;
     match_score: number;
     skills: string[];
+    key_focus_areas?: string[];
+    study_strategy?: string[];
+    estimated_prep_hours?: number;
     items: ChecklistItem[];
   } | null>(null);
 
@@ -724,6 +727,27 @@ export default function JDAnalyzer() {
                   ))}
                 </div>
               </div>
+
+              {/* Key Technical Pillars & Strategy */}
+              {result.key_focus_areas && result.key_focus_areas.length > 0 && (
+                <div className="jd-strategy-card" style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "10px", padding: "16px 20px", display: "flex", flexDirection: "column", gap: "10px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
+                    <div style={{ fontSize: "13px", fontWeight: "700", color: "#1e293b" }}>Core Technical Interview Pillars:</div>
+                    {result.estimated_prep_hours && (
+                      <span className="badge-pill" style={{ background: "#eff6ff", color: "#1d4ed8", fontWeight: "700" }}>
+                        Est. Preparation: ~{result.estimated_prep_hours} Hours
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                    {result.key_focus_areas.map((pillar, i) => (
+                      <span key={i} style={{ fontSize: "12px", background: "#f8fafc", color: "#334155", border: "1px solid #cbd5e1", padding: "3px 10px", borderRadius: "6px", fontWeight: "600" }}>
+                        {pillar}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Progress & Persistence Control Bar */}
               <div className="jd-controls-bar">

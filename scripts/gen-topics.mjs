@@ -14,6 +14,12 @@ const slugify = s => s.toLowerCase().replace(/\*\*|`/g, "").replace(/[^a-z0-9]+/
 if (!existsSync(dir)) { console.log("notes/content not found - keeping the committed topics.json"); process.exit(0); }
 const pm = join(here, "..", "..", "notes", "pagemap.json");
 const pagemap = existsSync(pm) ? JSON.parse(readFileSync(pm, "utf8")) : {};
+const mpm = existsSync(join(here, "..", "..", "notes", "master_pagemap.json"))
+  ? join(here, "..", "..", "notes", "master_pagemap.json")
+  : existsSync(join(here, "..", "master_pagemap.json"))
+  ? join(here, "..", "master_pagemap.json")
+  : null;
+const masterPagemap = mpm ? JSON.parse(readFileSync(mpm, "utf8")) : {};
 const notebooks = {};
 {
   const files = readdirSync(dir).filter(f => f.endsWith(".md")).sort((a, b) => a.localeCompare(b, "en", { numeric: true }));
@@ -27,19 +33,26 @@ const notebooks = {};
       if (inCode) continue;
       if (line.startsWith("## ")) {
         const title = line.slice(3).replace(/\*\*/g, "").trim();
-        section = { id: `${slug}/${slugify(title)}`, title, items: [], page: pagemap[slug]?.[title] };
+        const secMaster = masterPagemap[slug]?.[title];
+        section = { id: `${slug}/${slugify(title)}`, title, items: [], page: pagemap[slug]?.[title], ...(secMaster ? { masterPage: secMaster } : {}) };
         nb.sections.push(section);
       } else if (line.startsWith("### ") && section) {
         const title = line.slice(4).replace(/\*\*/g, "").trim();
         let id = `${section.id}/${slugify(title)}`;
         while (section.items.some(i => i.id === id)) id += "-x";
-        section.items.push({ id, title, page: pagemap[slug]?.[section.title + " >> " + title] });
+        const itMaster = masterPagemap[slug]?.[section.title + " >> " + title] || masterPagemap[slug]?.[title] || section.masterPage;
+        section.items.push({
+          id,
+          title,
+          page: pagemap[slug]?.[section.title + " >> " + title] || pagemap[slug]?.[title],
+          ...(itMaster ? { masterPage: itMaster } : {})
+        });
       }
     }
   }
   // A section without sub-items becomes one checklist item itself.
   for (const nb of Object.values(notebooks))
-    for (const s of nb.sections) if (!s.items.length) s.items.push({ id: s.id + "/done", title: s.title, page: s.page });
+    for (const s of nb.sections) if (!s.items.length) s.items.push({ id: s.id + "/done", title: s.title, page: s.page, ...(s.masterPage ? { masterPage: s.masterPage } : {}) });
 }
 writeFileSync(out, JSON.stringify(notebooks));
 const count = Object.values(notebooks).reduce((n, nb) => n + nb.sections.reduce((m, s) => m + s.items.length, 0), 0);

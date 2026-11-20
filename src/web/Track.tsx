@@ -7,8 +7,8 @@ import { useAuth, Msg } from "./App";
 import { NOTEBOOKS, CAREER_ROLES } from "../shared/catalog";
 import topicsJson from "../shared/topics.json";
 
-type Item = { id: string; title: string; page?: number };
-type Section = { id: string; title: string; page?: number; items: Item[] };
+type Item = { id: string; title: string; page?: number; masterPage?: number };
+type Section = { id: string; title: string; page?: number; masterPage?: number; items: Item[] };
 const TOPICS = topicsJson as Record<string, { slug: string; sections: Section[] }>;
 const A2Z = "11-dsa-a2z-solutions";
 const tufSlug = (t: string) => t.toLowerCase().replace(/\(.*?\)/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -193,12 +193,15 @@ export default function Track() {
               <span className="small muted">{sd} / {sec.items.length}</span>
               <button className="sm" onClick={e => { e.stopPropagation(); mark(sec.items.map(i => i.id), sd !== sec.items.length); }}>{sd === sec.items.length ? "Unmark all" : "Mark all"}</button>
             </div>
-            {sOpen && shown.map(it => <div className={`item ${done.has(it.id) ? "done" : ""}`} key={it.id}>
-              <input type="checkbox" checked={done.has(it.id)} onChange={e => mark([it.id], e.target.checked)} aria-label={`Done: ${it.title}`} />
-              <a className="t" href={masterRead(it.page || sec.page, it.id)} target="_blank" rel="noopener noreferrer" onClick={() => mark([it.id], true)} title="Open master notes at this topic in new tab">{it.title}</a>
-              {(it.page || sec.page) && <a className="btn sm primary" href={masterRead(it.page || sec.page, it.id)} target="_blank" rel="noopener noreferrer" onClick={() => mark([it.id], true)} title="Open master notes at this topic in new tab">Notes · p.{it.page || sec.page}</a>}
-              {nb.slug === A2Z && <a className="btn sm" href={`https://takeuforward.org/prep-hub/strivers-a2z-dsa-sheet?note=${tufSlug(it.title)}`} target="_blank" rel="noopener noreferrer" title="Extra resource on takeUforward">TUF ↗</a>}
-            </div>)}
+            {sOpen && shown.map(it => {
+              const targetPage = it.masterPage || sec.masterPage || it.page || sec.page;
+              return <div className={`item ${done.has(it.id) ? "done" : ""}`} key={it.id}>
+                <input type="checkbox" checked={done.has(it.id)} onChange={e => mark([it.id], e.target.checked)} aria-label={`Done: ${it.title}`} />
+                <a className="t" href={masterRead(targetPage, it.id)} target="_blank" rel="noopener noreferrer" onClick={() => mark([it.id], true)} title="Open master notes at this topic in new tab">{it.title}</a>
+                {targetPage && <a className="btn sm primary" href={masterRead(targetPage, it.id)} target="_blank" rel="noopener noreferrer" onClick={() => mark([it.id], true)} title="Open master notes at this topic in new tab">Notes · p.{targetPage}</a>}
+                {nb.slug === A2Z && <a className="btn sm" href={`https://takeuforward.org/prep-hub/strivers-a2z-dsa-sheet?note=${tufSlug(it.title)}`} target="_blank" rel="noopener noreferrer" title="Extra resource on takeUforward">TUF ↗</a>}
+              </div>;
+            })}
           </div>;
         })}
       </div>;

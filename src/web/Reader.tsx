@@ -6,7 +6,7 @@ import { api } from "./api";
 import { useAuth, Msg } from "./App";
 import topicsJson from "../shared/topics.json";
 
-const TOPICS = topicsJson as Record<string, { slug: string; sections: { id: string; title: string; page?: number; items: { id: string; title: string; page?: number }[] }[] }>;
+const TOPICS = topicsJson as Record<string, { slug: string; sections: { id: string; title: string; page?: number; masterPage?: number; items: { id: string; title: string; page?: number; masterPage?: number }[] }[] }>;
 const RATIO = 1110 / 794;                         // standard notebook aspect ratio
 const MOBILE = typeof window !== "undefined" && window.matchMedia("(max-width: 760px)").matches;
 const PAINT_RADIUS = MOBILE ? 2 : 4;               // canvases kept painted around current page
@@ -27,7 +27,30 @@ export default function Reader() {
   const holder = useRef<HTMLDivElement>(null);
   const pdfDocRef = useRef<any>(null);
   const curRef = useRef(1); const alive = useRef(true);
-  const start = Math.max(1, Number(sp.get("page")) || 1);
+  const itemParam = sp.get("item");
+  const rawPage = Number(sp.get("page"));
+  const start = (() => {
+    if (itemParam && slug) {
+      const isMaster = slug.endsWith("-master") || slug.endsWith("-long");
+      const baseSlug = slug.replace(/-(master|long)$/, "");
+      const nb = (TOPICS as any)[baseSlug] || (TOPICS as any)[slug];
+      if (nb) {
+        for (const sec of nb.sections || []) {
+          if (sec.id === itemParam) {
+            const p = isMaster ? (sec.masterPage || sec.page) : (sec.page || sec.masterPage);
+            if (p) return p;
+          }
+          for (const it of sec.items || []) {
+            if (it.id === itemParam) {
+              const p = isMaster ? (it.masterPage || sec.masterPage || it.page || sec.page) : (it.page || sec.page || it.masterPage || sec.masterPage);
+              if (p) return p;
+            }
+          }
+        }
+      }
+    }
+    return rawPage > 0 ? rawPage : 1;
+  })();
   const renderingRef = useRef<Set<number>>(new Set());
 
   useEffect(() => { document.body.classList.add("reading"); return () => document.body.classList.remove("reading"); }, []);
@@ -198,13 +221,25 @@ export default function Reader() {
     };
 
     window.addEventListener("scroll", onScroll, { passive: true });
+    let t1: any, t2: any, t3: any;
     if (start > 1) {
-      setTimeout(() => holder.current?.querySelector(`[data-n="${Math.min(start, meta.pages)}"]`)?.scrollIntoView({ block: "start" }), 80);
+      const target = Math.min(start, meta.pages);
+      const scrollToTarget = () => {
+        const el = holder.current?.querySelector<HTMLElement>(`[data-n="${target}"]`);
+        if (el) el.scrollIntoView({ block: "start" });
+      };
+      scrollToTarget();
+      t1 = setTimeout(scrollToTarget, 50);
+      t2 = setTimeout(scrollToTarget, 150);
+      t3 = setTimeout(scrollToTarget, 400);
     }
     return () => {
       io.disconnect();
       window.removeEventListener("scroll", onScroll);
       clearTimeout(timer);
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
     };
   }, [meta, zoom]);
 
@@ -218,12 +253,14 @@ export default function Reader() {
       markedPages.current.add(cur);
 
       const baseSlug = slug.replace(/-(master|long)$/, "");
-      const nb = TOPICS[baseSlug] || TOPICS[slug];
+      const isMaster = slug.endsWith("-master") || slug.endsWith("-long");
+      const nb = (TOPICS as any)[baseSlug] || (TOPICS as any)[slug];
       const items: string[] = [];
       if (nb) {
         for (const s of nb.sections || []) {
           for (const it of s.items || []) {
-            if ((it.page || s.page) === cur) items.push(it.id);
+            const p = isMaster ? (it.masterPage || s.masterPage || it.page || s.page) : (it.page || s.page || it.masterPage || s.masterPage);
+            if (p === cur) items.push(it.id);
           }
         }
       }
@@ -330,6 +367,7 @@ export default function Reader() {
 
   const go = (n: number) => {
     const targetPage = Math.max(1, Math.min(meta?.pages || 1, n));
+    onPage(targetPage);
     holder.current?.querySelector(`[data-n="${targetPage}"]`)?.scrollIntoView({ block: "start" });
   };
 
@@ -347,7 +385,7 @@ export default function Reader() {
       {statusMsg && <span className="reader-pill">{statusMsg}</span>}
       {meta && <>
         <button className="sm" onClick={() => go(cur - 1)} disabled={cur <= 1} aria-label="Previous page">Prev</button>
-        <label className="row small nowrap">
+        <div className="page-control">
           <span className="hide-sm">Page</span>
           <input
             className="page-input"
@@ -360,8 +398,9 @@ export default function Reader() {
               if (n >= 1 && n <= meta.pages) go(n);
             }}
             aria-label="Go to page"
-          /> / {meta.pages}
-        </label>
+          />
+          <span>/ {meta.pages}</span>
+        </div>
         <button className="sm" onClick={() => go(cur + 1)} disabled={cur >= meta.pages} aria-label="Next page">Next</button>
         <button className="sm hide-sm" onClick={() => setZoom(z => Math.max(0.6, +(z - 0.15).toFixed(2)))} aria-label="Zoom out">−</button>
         <button className="sm hide-sm" onClick={() => setZoom(z => Math.min(2, +(z + 0.15).toFixed(2)))} aria-label="Zoom in">+</button>

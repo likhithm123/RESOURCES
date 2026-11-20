@@ -460,13 +460,73 @@ th {
     position: sticky;
     top: 49px;
     z-index: 15;
-    background: #fff;
+    background: #ffffff;
     border-bottom: 1px solid var(--line);
     padding: 8px 16px;
     display: flex;
     gap: 10px;
     align-items: center;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    min-height: 52px;
+    box-sizing: border-box;
+}
+
+.reader-bar .btn,
+.reader-bar button {
+    flex: none;
+    white-space: nowrap;
+}
+
+.reader-bar .reader-title {
+    flex: 1;
+    min-width: 140px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.page-control {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    white-space: nowrap !important;
+    font-size: 13px !important;
+    color: var(--muted);
+    user-select: none;
+    flex: none !important;
+    line-height: 1 !important;
+}
+
+.page-control span {
+    white-space: nowrap !important;
+    font-size: 13px !important;
+    line-height: 1 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+}
+
+input.page-input,
+.page-control input.page-input {
+    width: 52px !important;
+    min-width: 52px !important;
+    max-width: 52px !important;
+    height: 30px !important;
+    padding: 2px 4px !important;
+    text-align: center !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    border-radius: 6px !important;
+    border: 1px solid #c9cfe2 !important;
+    background: #ffffff !important;
+    display: inline-block !important;
+    flex: none !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+    line-height: normal !important;
 }
 
 .reader-pill {
@@ -476,6 +536,8 @@ th {
     border-radius: 99px;
     font-size: 12px;
     font-weight: 600;
+    white-space: nowrap;
+    flex: none;
 }
 
 .reader-progress-bar {

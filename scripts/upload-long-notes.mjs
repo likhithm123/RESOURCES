@@ -12,7 +12,7 @@ const { ikFolder, ikDeleteFolder } = await import("../server/lib.js");
 const { indexText } = await import("./index-text.mjs");
 
 const auth = "Basic " + Buffer.from(process.env.IMAGEKIT_PRIVATE_KEY + ":").toString("base64");
-const pdfDir = path.resolve("..", "long_notes", "pdfs");
+const pdfDir = path.resolve("..", "all_pdfs_local", "02_long_form_master_editions_pdfs");
 if (!fs.existsSync(pdfDir)) {
   console.log("No long_notes/pdfs directory found.");
   process.exit(0);

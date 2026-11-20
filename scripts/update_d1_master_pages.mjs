@@ -7,7 +7,7 @@ for (const line of fs.readFileSync(".env.local", "utf8").split("\n")) {
 }
 const { db } = await import("../server/db.js");
 
-const dir = path.resolve("..", "long_notes", "pdfs");
+const dir = path.resolve("..", "all_pdfs_local", "02_long_form_master_editions_pdfs");
 const files = fs.readdirSync(dir).filter(f => f.endsWith(".pdf"));
 
 for (const f of files) {

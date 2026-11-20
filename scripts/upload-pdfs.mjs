@@ -19,7 +19,7 @@ const { NOTEBOOKS } = await import("../src/shared/catalog.ts").catch(async () =>
   return { NOTEBOOKS: [...src.matchAll(/slug: "([^"]+)", title: "([^"]+)", roles: (ALL|\[[^\]]*\])/g)].map(m => ({ slug: m[1], title: m[2], roles: m[3] === "ALL" ? ALL : JSON.parse(m[3]) })) };
 });
 const auth = "Basic " + Buffer.from(process.env.IMAGEKIT_PRIVATE_KEY + ":").toString("base64");
-const pdfDir = path.resolve("..", "pdfs");
+const pdfDir = path.resolve("..", "all_pdfs_local", "01_quick_revision_notes_pdfs");
 const filters = process.argv.slice(2);
 const files = fs.readdirSync(pdfDir).filter(f => f.endsWith(".pdf") && (!filters.length || filters.some(x => f.includes(x)))).sort();
 await db.migrate();

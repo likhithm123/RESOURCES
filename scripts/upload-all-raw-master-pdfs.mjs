@@ -5,7 +5,7 @@ for (const line of fs.readFileSync(".env.local", "utf8").split("\n")) {
   const i = line.indexOf("="); if (i > 0 && !line.startsWith("#")) process.env[line.slice(0, i).trim()] = line.slice(i + 1).trim();
 }
 const auth = "Basic " + Buffer.from(process.env.IMAGEKIT_PRIVATE_KEY + ":").toString("base64");
-const dir = path.resolve("..", "long_notes", "pdfs");
+const dir = path.resolve("..", "all_pdfs_local", "02_long_form_master_editions_pdfs");
 const files = fs.readdirSync(dir).filter(f => f.endsWith(".pdf")).sort();
 console.log(`Uploading ${files.length} raw Master PDFs to ImageKit /resources-portal/long-pdfs...`);
 

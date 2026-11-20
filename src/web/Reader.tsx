@@ -14,9 +14,6 @@ const PAINT_RADIUS = MOBILE ? 2 : 4;               // canvases kept painted arou
 type Hit = {
   page: number;
   count: number;
-  snippetPrefix: string;
-  snippetMatch: string;
-  snippetSuffix: string;
 };
 
 export default function Reader() {
@@ -345,22 +342,12 @@ export default function Reader() {
           const lower = text.toLowerCase();
           let count = 0;
           let pos = 0;
-          let firstIdx = -1;
           while ((pos = lower.indexOf(term, pos)) !== -1) {
-            if (firstIdx === -1) firstIdx = pos;
             count++;
             pos += term.length;
           }
-          if (count > 0 && firstIdx !== -1) {
-            const sStart = Math.max(0, firstIdx - 35);
-            const sEnd = Math.min(text.length, firstIdx + term.length + 45);
-            found.push({
-              page: p,
-              count,
-              snippetPrefix: (sStart > 0 ? "... " : "") + text.slice(sStart, firstIdx),
-              snippetMatch: text.slice(firstIdx, firstIdx + term.length),
-              snippetSuffix: text.slice(firstIdx + term.length, sEnd) + (sEnd < text.length ? " ..." : ""),
-            });
+          if (count > 0) {
+            found.push({ page: p, count });
           }
         }
       }
@@ -525,7 +512,7 @@ export default function Reader() {
             ) : q.trim() ? (
               hits.length > 0 ? (
                 <span>
-                  {hitIdx + 1} of {hits.length} pages ({totalMatches} match{totalMatches === 1 ? "" : "es"})
+                  Page {hits[hitIdx]?.page} ({hitIdx + 1} of {hits.length} pages · {totalMatches} match{totalMatches === 1 ? "" : "es"})
                 </span>
               ) : (
                 <span className="muted">No matches found</span>
@@ -573,32 +560,6 @@ export default function Reader() {
             Close
           </button>
         </div>
-
-        {hits.length > 0 && (
-          <div className="hits" aria-label="Search results list">
-            {hits.map((h, i) => (
-              <button
-                key={h.page}
-                type="button"
-                className={`hit ${i === hitIdx ? "on" : ""}`}
-                onClick={() => {
-                  setHitIdx(i);
-                  go(h.page);
-                }}
-              >
-                <b>Page {h.page}</b>
-                <span className="hit-count">
-                  ({h.count} match{h.count === 1 ? "" : "es"})
-                </span>
-                <span className="hit-snippet">
-                  {h.snippetPrefix}
-                  <mark className="snippet-hl">{h.snippetMatch}</mark>
-                  {h.snippetSuffix}
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
       </div>
     )}
 

@@ -5,21 +5,23 @@ for (const line of fs.readFileSync(".env.local", "utf8").split("\n")) {
   const i = line.indexOf("="); if (i > 0 && !line.startsWith("#")) process.env[line.slice(0, i).trim()] = line.slice(i + 1).trim();
 }
 const auth = "Basic " + Buffer.from(process.env.IMAGEKIT_PRIVATE_KEY + ":").toString("base64");
-const dir = path.resolve("..", "all_pdfs_local", "02_long_form_master_editions_pdfs");
+const masterDir = path.resolve("..", "all_pdfs_local", "02_long_form_master_editions_pdfs");
+const quickDir = path.resolve("..", "all_pdfs_local", "01_quick_revision_notes_pdfs");
 
-const targetFiles = [
-  "21-sde-role-master.pdf"
+const uploads = [
+  { dir: masterDir, file: "19-ai-engineer-llms-master.pdf", folder: "/resources-portal/long-pdfs" },
+  { dir: quickDir, file: "19-ai-engineer-llms.pdf", folder: "/resources-portal/pdfs" }
 ];
 
-console.log(`Uploading ${targetFiles.length} updated Master PDFs to ImageKit /resources-portal/long-pdfs...`);
+console.log(`Uploading ${uploads.length} updated PDFs to ImageKit...`);
 
-for (let i = 0; i < targetFiles.length; i++) {
-  const file = targetFiles[i];
+for (let i = 0; i < uploads.length; i++) {
+  const { dir, file, folder } = uploads[i];
   const fullPath = path.join(dir, file);
   const fd = new FormData();
   fd.append("file", new Blob([fs.readFileSync(fullPath)], { type: "application/pdf" }), file);
   fd.append("fileName", file);
-  fd.append("folder", "/resources-portal/long-pdfs");
+  fd.append("folder", folder);
   fd.append("useUniqueFileName", "false");
   fd.append("isPrivateFile", "false");
   fd.append("overwriteFile", "true");
@@ -32,7 +34,7 @@ for (let i = 0; i < targetFiles.length; i++) {
         body: fd
       });
       if (res.ok) {
-        console.log(`[${i+1}/${targetFiles.length}] Successfully uploaded ${file} (${(fs.statSync(fullPath).size/(1024*1024)).toFixed(2)} MB)`);
+        console.log(`[${i+1}/${uploads.length}] Successfully uploaded ${file} to ${folder} (${(fs.statSync(fullPath).size/(1024*1024)).toFixed(2)} MB)`);
         break;
       }
       console.warn(`Attempt ${attempt} failed: ${res.status}`);

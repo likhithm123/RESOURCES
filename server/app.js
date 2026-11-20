@@ -209,11 +209,14 @@ app.get("/docs", async c => {
 const signView = payload => { const p = Buffer.from(JSON.stringify(payload)).toString("base64url"); return `${p}.${hmacHex("sha256", secret(), "view:" + p)}`; };
 const viewKey = token => crypto.createHmac("sha256", secret()).update("key:" + token).digest();   // 32 bytes
 // Opens a document: returns a 2-hour view token bound to this user plus the key that decrypts its pages.
+// STRICT: Only authenticated users can open documents and access files.
 app.post("/docs/:slug/open", async c => {
-  const u = c.get("user") || { id: 0, email: "guest@portal.local", role: "guest" };
+  const u = auth(c);
   const d = await db.first("SELECT * FROM rp_documents WHERE slug = ? AND (published = 1 OR ? = 'admin')", [c.req.param("slug"), u.role]);
   if (!d) fail(404, "Document not found.");
-  const cookieSig = sha256(getCookie(c, COOKIE) || "guest").slice(0, 16);
+  const cookieToken = getCookie(c, COOKIE);
+  if (!cookieToken) fail(401, "Please sign in to access files.");
+  const cookieSig = sha256(cookieToken).slice(0, 16);
   const token = signView({ u: u.id, e: u.email, slug: d.slug, d: d.id, f: d.ik_folder, n: d.pages, s: cookieSig, x: Math.floor(Date.now() / 1000) + 7200 });
   await audit(c, "doc.open", d.slug);
   const searchable = !!(await db.first("SELECT 1 AS y FROM rp_doc_pages WHERE doc_id = ? LIMIT 1", [d.id]));
@@ -221,14 +224,18 @@ app.post("/docs/:slug/open", async c => {
 });
 
 // Stream compressed vector PDF as opaque binary stream for client-side protected rendering
+// STRICT: Only authenticated users with matching session cookie can stream document binaries.
 app.get("/view-pdf/:token", async c => {
   const token = c.req.param("token");
   const [p, sig] = (token || "").split(".");
   if (!p || !sig || !safeEqual(sig, hmacHex("sha256", secret(), "view:" + p))) fail(403, "Invalid view token.");
   const v = parse(Buffer.from(p, "base64url").toString(), {});
+  if (!v.u || v.u <= 0) fail(401, "Please sign in to access files.");
   if (v.x < Math.floor(Date.now() / 1000)) fail(403, "This view has expired. Reopen the document.");
-  const cookieSig = sha256(getCookie(c, COOKIE) || "guest").slice(0, 16);
-  if (v.s !== cookieSig) fail(401, "Session mismatch. Please refresh.");
+  const cookieToken = getCookie(c, COOKIE);
+  if (!cookieToken) fail(401, "Please sign in to access files.");
+  const cookieSig = sha256(cookieToken).slice(0, 16);
+  if (v.s !== cookieSig) fail(401, "Session mismatch. Please sign in.");
 
   const isMaster = v.slug.endsWith("-master") || v.slug.endsWith("-long");
   const folder = isMaster ? "long-pdfs" : "pdfs";
@@ -254,8 +261,10 @@ app.get("/view/:token/:range", async c => {
   const token = c.req.param("token"); const [p, sig] = token.split(".");
   if (!p || !sig || !safeEqual(sig, hmacHex("sha256", secret(), "view:" + p))) fail(403, "Invalid view.");
   const v = parse(Buffer.from(p, "base64url").toString(), {});
-  if (!v.u || v.x < Math.floor(Date.now() / 1000)) fail(403, "This view has expired. Reopen the document.");
-  if (v.s !== sha256(getCookie(c, COOKIE) || "").slice(0, 16)) fail(401, "Please sign in again.");
+  if (!v.u || v.u <= 0 || v.x < Math.floor(Date.now() / 1000)) fail(403, "This view has expired. Reopen the document.");
+  const cookieToken = getCookie(c, COOKIE);
+  if (!cookieToken) fail(401, "Please sign in to access files.");
+  if (v.s !== sha256(cookieToken).slice(0, 16)) fail(401, "Please sign in again.");
   const dest = c.req.header("sec-fetch-dest"); if (dest && dest !== "empty") fail(403, "Not allowed.");
   const [a1, b1] = c.req.param("range").split("-").map(Number); const first = a1, last = b1 || a1;
   if (!Number.isInteger(first) || !Number.isInteger(last) || first < 1 || last < first || last > v.n || last - first > 3) fail(400, "Bad page range.");

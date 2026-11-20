@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { Link, NavLink, Navigate, Route, Routes, useNavigate } from "react-router-dom";
+import { Link, NavLink, Navigate, Route, Routes, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { api, type User } from "./api";
 import { CAREER_ROLES } from "../shared/catalog";
 import Track from "./Track";
@@ -70,12 +70,22 @@ export function RoleChips({ value, onChange }: { value: string[]; onChange: (v: 
 
 /* ---------------- Sign in / sign up / reset (all confirmed with an emailed code) ---------------- */
 function AuthPage({ mode }: { mode: "login" | "signup" | "forgot" }) {
-  const { setUser } = useAuth(); const nav = useNavigate();
+  const { setUser } = useAuth(); const nav = useNavigate(); const [sp] = useSearchParams();
+  const next = sp.get("next");
   const [f, setF] = useState<{ name: string; email: string; password: string; code: string; phone: string; roles: string[] }>({ name: "", email: "", password: "", code: "", phone: "", roles: ALL_ROLES });
   const [consent, setConsent] = useState(false);
   const [step, setStep] = useState<"form" | "code">("form");
   const [purpose, setPurpose] = useState("login");
   const [err, setErr] = useState(""); const [info, setInfo] = useState(""); const [busy, setBusy] = useState(false);
+
+  const afterAuth = (u: User) => {
+    if (next && next.startsWith("/")) {
+      nav(next);
+    } else {
+      nav(u.career_roles.length ? "/" : "/plan");
+    }
+  };
+
   useEffect(() => {
     setStep("form");
     setErr("");
@@ -106,17 +116,17 @@ function AuthPage({ mode }: { mode: "login" | "signup" | "forgot" }) {
         if (mode === "signup") { await api("/auth/signup", "POST", { name: f.name, email: f.email, password: f.password, phone: f.phone, career_roles: f.roles }); setPurpose("verify"); }
         else if (mode === "login") {
           const r = await api("/auth/login", "POST", { email: f.email, password: f.password });
-          if (r.user) { setUser(r.user); nav(r.user.career_roles.length ? "/" : "/plan"); return; }
+          if (r.user) { setUser(r.user); afterAuth(r.user); return; }
           setPurpose(r.purpose);                         // account not verified yet: a code was emailed
         }
         else { await api("/auth/forgot", "POST", { email: f.email }); setPurpose("reset"); }
         setStep("code"); setInfo(`We sent a 6-digit code to ${f.email}.`);
       } else if (purpose === "reset") {
         await api("/auth/reset", "POST", { email: f.email, code: f.code, password: f.password });
-        nav("/login"); setStep("form"); setInfo("Password changed. Sign in with your new password.");
+        nav(next ? `/login?next=${encodeURIComponent(next)}` : "/login"); setStep("form"); setInfo("Password changed. Sign in with your new password.");
       } else {
         const r = await api(purpose === "verify" ? "/auth/verify" : "/auth/login/verify", "POST", { email: f.email, code: f.code });
-        setUser(r.user); nav(r.user.career_roles.length ? "/" : "/plan");
+        setUser(r.user); afterAuth(r.user);
       }
     } catch (x: any) { setErr(x.message); } finally { setBusy(false); }
   }
@@ -124,6 +134,7 @@ function AuthPage({ mode }: { mode: "login" | "signup" | "forgot" }) {
   return <div className="auth card">
     <h1>{title}</h1>
     <p className="muted small">Handwritten-style notes, a track sheet that remembers your progress, and interview prep for every role.</p>
+    {next && <Msg kind="info">Sign in required to access and view notes. Please sign in or create an account to continue.</Msg>}
     <Msg>{err}</Msg><Msg kind="info">{info}</Msg>
     <form onSubmit={submit}>
       {step === "form" ? <>
@@ -153,13 +164,17 @@ function AuthPage({ mode }: { mode: "login" | "signup" | "forgot" }) {
           </button>
         </div>
         <div className="row" style={{ justifyContent: "center", gap: 12, marginTop: 14 }}>
-          <button type="button" className="btn sm" onClick={resendCode} disabled={busy}>↻ Resend code</button>
+          <button type="button" className="btn sm" onClick={resendCode} disabled={busy}>Resend code</button>
           <button type="button" className="btn sm" onClick={() => { setStep("form"); setInfo(""); setErr(""); }} disabled={busy}>Use a different email</button>
         </div>
       </>}
     </form>
     <p className="small" style={{ marginTop: 16 }}>
-      {mode === "login" ? <>New here? <Link to="/signup">Create an account</Link> · <Link to="/forgot">Forgot password?</Link></> : <>Already have an account? <Link to="/login">Sign in</Link></>}
+      {mode === "login" ? (
+        <>New here? <Link to={next ? `/signup?next=${encodeURIComponent(next)}` : "/signup"}>Create an account</Link> · <Link to="/forgot">Forgot password?</Link></>
+      ) : (
+        <>Already have an account? <Link to={next ? `/login?next=${encodeURIComponent(next)}` : "/login"}>Sign in</Link></>
+      )}
     </p>
   </div>;
 }
@@ -226,9 +241,12 @@ export default function App() {
   const refresh = async () => { setUser((await api("/me")).user); };
   useEffect(() => { refresh().catch(() => {}).finally(() => setReady(true)); }, []);
   const nav = useNavigate();
+  const loc = useLocation();
   if (!ready) return <div className="wrap muted">Loading...</div>;
   const tab = ({ isActive }: { isActive: boolean }) => `tab ${isActive ? "active" : ""}`;
-  const guard = (el: React.ReactElement) => (user ? el : <Navigate to="/login" replace />);
+  const guard = (el: React.ReactElement) => (
+    user ? el : <Navigate to={`/login?next=${encodeURIComponent(loc.pathname + loc.search)}`} replace />
+  );
   return <Ctx.Provider value={{ user, setUser, refresh }}>
     <header className="nav"><div className="nav-in">
       <Link to="/" className="brand">Resources Portal</Link>
@@ -256,7 +274,7 @@ export default function App() {
       </>}
     </div></header>
     <Routes>
-      <Route path="/read/:slug" element={<Reader />} />
+      <Route path="/read/:slug" element={guard(<Reader />)} />
       <Route path="*" element={<main className="wrap"><Routes>
         <Route path="/login" element={user ? <Navigate to="/" replace /> : <AuthPage mode="login" />} />
         <Route path="/signup" element={user ? <Navigate to="/" replace /> : <AuthPage mode="signup" />} />

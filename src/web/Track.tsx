@@ -94,6 +94,18 @@ export default function Track() {
   }, [mine, needle]);
 
   return <>
+    {!user && (
+      <div className="card" style={{ background: "#f8fafc", border: "1px solid #e2e8f0", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+        <div>
+          <b style={{ fontSize: 15 }}>Sign in required to access notes</b>
+          <div className="muted small" style={{ marginTop: 2 }}>You can track syllabus progress freely. To open and read handwritten notes, please sign in or create an account.</div>
+        </div>
+        <div className="row" style={{ gap: 8 }}>
+          <Link to="/login" className="btn sm">Sign in</Link>
+          <Link to="/signup" className="btn sm btn-signup">Sign up</Link>
+        </div>
+      </div>
+    )}
     <div className="card">
       <div className="row"><div style={{ flex: 1, minWidth: 220 }}>
         <h1>Hi {user?.name ? user.name.split(" ")[0] : "Student"}, here is your track sheet</h1>
@@ -153,10 +165,12 @@ export default function Track() {
       const isDsa = nb.slug.includes("dsa");
       const isA2Z = nb.slug === A2Z;
       const read = (page?: number, itemId?: string) => `/read/${nb.slug}${page ? `?page=${page}` : ""}${itemId ? `${page ? "&" : "?"}item=${encodeURIComponent(itemId)}` : ""}`;
+      const shortRead = read;
       const prefix = nb.slug.slice(0, 3);
       const masterDoc = Object.values(docs || {}).find(d => (d.slug === `${nb.slug}-master` || (d.slug.startsWith(prefix) && d.slug.endsWith("-master"))));
       const masterSlug = masterDoc ? masterDoc.slug : `${nb.slug}-master`;
       const masterRead = (page?: number, itemId?: string) => `/read/${masterSlug}${page ? `?page=${page}` : ""}${itemId ? `${page ? "&" : "?"}item=${encodeURIComponent(itemId)}` : ""}`;
+      const toUrl = (path: string) => user ? path : `/login?next=${encodeURIComponent(path)}`;
 
       return <div className={`nb ${isA2Z ? "nb-a2z" : isDsa ? "nb-dsa" : ""}`} key={nb.slug}>
         <div className="nb-head" onClick={() => flip(nb.slug)} role="button" aria-expanded={isOpen}>
@@ -175,8 +189,8 @@ export default function Track() {
           </div>
           <div className="row" style={{ width: 140 }}><Bar d={d} n={items.length} /></div>
           <div className="row" style={{ gap: 8, flexWrap: "wrap", alignItems: "center" }} onClick={e => e.stopPropagation()}>
-            <a className="btn sm" href={read()} target="_blank" rel="noopener noreferrer" title="Open Quick Revision Notes in new tab">Quick Revise</a>
-            <a className="btn sm primary" href={masterRead()} target="_blank" rel="noopener noreferrer" title="Open Master Deep-Dive Edition in new tab">Master Edition {masterDoc ? `(${masterDoc.pages}p)` : ""}</a>
+            <a className="btn sm" href={toUrl(read())} target={user ? "_blank" : undefined} rel="noopener noreferrer" title="Open Quick Revision Notes in new tab">Quick Revise</a>
+            <a className="btn sm primary" href={toUrl(masterRead())} target={user ? "_blank" : undefined} rel="noopener noreferrer" title="Open Master Deep-Dive Edition in new tab">Master Edition {masterDoc ? `(${masterDoc.pages}p)` : ""}</a>
           </div>
         </div>
         {isOpen && sections.map(sec => {
@@ -205,9 +219,9 @@ export default function Track() {
 
               return <div className={`item ${done.has(it.id) ? "done" : ""}`} key={it.id}>
                 <input type="checkbox" checked={done.has(it.id)} onChange={e => mark([it.id], e.target.checked)} aria-label={`Done: ${it.title}`} />
-                <a className="t" href={targetUrl} target="_blank" rel="noopener noreferrer" title="Open master notes at this topic in new tab">{it.title}</a>
-                {targetPage && <a className="btn sm primary" href={targetUrl} target="_blank" rel="noopener noreferrer" title="Open master notes at this topic in new tab">{label}</a>}
-                {shortP && shortP !== masterP && <a className="btn sm" href={shortRead(shortP, it.id)} target="_blank" rel="noopener noreferrer" title="Open Quick Revision notes in new tab">Quick · p.{shortP}</a>}
+                <a className="t" href={toUrl(targetUrl)} target={user ? "_blank" : undefined} rel="noopener noreferrer" title="Open master notes at this topic in new tab">{it.title}</a>
+                {targetPage && <a className="btn sm primary" href={toUrl(targetUrl)} target={user ? "_blank" : undefined} rel="noopener noreferrer" title="Open master notes at this topic in new tab">{label}</a>}
+                {shortP && shortP !== masterP && <a className="btn sm" href={toUrl(shortRead(shortP, it.id))} target={user ? "_blank" : undefined} rel="noopener noreferrer" title="Open Quick Revision notes in new tab">Quick · p.{shortP}</a>}
                 {nb.slug === A2Z && <a className="btn sm" href={`https://takeuforward.org/prep-hub/strivers-a2z-dsa-sheet?note=${tufSlug(it.title)}`} target="_blank" rel="noopener noreferrer" title="Extra resource on takeUforward">TUF ↗</a>}
               </div>;
             })}

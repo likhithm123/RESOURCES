@@ -18,6 +18,32 @@ type Hit = {
 
 export default function Reader() {
   const { slug } = useParams(); const [sp] = useSearchParams(); const { user } = useAuth();
+
+  if (!user) {
+    const nextUrl = typeof window !== "undefined" ? window.location.pathname + window.location.search : "/";
+    return (
+      <div style={{ maxWidth: 480, margin: "80px auto", padding: "0 16px" }}>
+        <div className="card" style={{ textAlign: "center", padding: "40px 24px" }}>
+          <h2 style={{ marginBottom: 10 }}>Sign in required</h2>
+          <p className="muted" style={{ marginBottom: 24, fontSize: 14, lineHeight: 1.6 }}>
+            You must be signed in to access and read study notes.
+          </p>
+          <div className="row" style={{ justifyContent: "center", gap: 12 }}>
+            <Link to={`/login?next=${encodeURIComponent(nextUrl)}`} className="btn primary">
+              Sign in
+            </Link>
+            <Link to={`/signup?next=${encodeURIComponent(nextUrl)}`} className="btn btn-signup">
+              Create free account
+            </Link>
+          </div>
+          <div style={{ marginTop: 20 }}>
+            <Link to="/" className="small muted">Back to track sheet</Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const [meta, setMeta] = useState<{ token: string; pages: number; title: string; searchable: boolean; email?: string } | null>(null);
   const [err, setErr] = useState(""); const [zoom, setZoom] = useState(1); const [cur, setCur] = useState(1); const [hidden, setHidden] = useState(false);
   const [statusMsg, setStatusMsg] = useState("");
@@ -118,7 +144,13 @@ export default function Reader() {
         if (alive.current) setErr(x.message || "Failed to initialize secure viewer.");
       }
     }).catch(e => {
-      if (alive.current) setErr(e.message);
+      if (alive.current) {
+        if (e.message && e.message.toLowerCase().includes("sign in")) {
+          setErr("Please sign in to access and read this document.");
+        } else {
+          setErr(e.message || "Failed to open document.");
+        }
+      }
     });
 
     return () => {
@@ -564,7 +596,18 @@ export default function Reader() {
     )}
 
     <div className="reader" ref={holder}>
-      {err && <div style={{ maxWidth: 600, margin: "auto" }}><Msg>{err}</Msg></div>}
+      {err && (
+        <div style={{ maxWidth: 540, margin: "40px auto", textAlign: "center" }}>
+          <Msg>{err}</Msg>
+          {err.toLowerCase().includes("sign in") && (
+            <div style={{ marginTop: 16 }}>
+              <Link to={`/login?next=${encodeURIComponent(typeof window !== "undefined" ? window.location.pathname + window.location.search : "/")}`} className="btn primary">
+                Sign in to read
+              </Link>
+            </div>
+          )}
+        </div>
+      )}
       {meta && Array.from({ length: meta.pages }, (_, i) => i + 1).map(n =>
         <div className="pg" key={n} data-n={n} style={{ width: `min(${width}px, 100%)`, aspectRatio: `${1 / RATIO}` }}>
           <canvas data-p={n} aria-label={`Page ${n}`} />

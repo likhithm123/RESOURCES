@@ -39,6 +39,18 @@ export function Library() {
       </label>
     </div>
     <p className="muted">Handwritten-style comprehensive notes. Choose between rapid Quick Revision notes and complete Master Deep-Dive editions (100+ pages).</p>
+    {!user && (
+      <div className="card" style={{ background: "#f8fafc", border: "1px solid #e2e8f0", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+        <div>
+          <b style={{ fontSize: 15 }}>Sign in required to open notes</b>
+          <div className="muted small" style={{ marginTop: 2 }}>You can browse notes freely. To open and read notes, please sign in or create an account.</div>
+        </div>
+        <div className="row" style={{ gap: 8 }}>
+          <Link to="/login" className="btn sm">Sign in</Link>
+          <Link to="/signup" className="btn sm btn-signup">Sign up</Link>
+        </div>
+      </div>
+    )}
     <Msg>{err}</Msg>
 
     <div className="row" style={{ gap: 10, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
@@ -84,8 +96,13 @@ export function Library() {
           {d.career_roles.length > 4 && <span className="tag" style={{ fontSize: 10 }}>+{d.career_roles.length - 4} more</span>}
         </div>
         <div className="row" style={{ gap: 8, alignItems: "center", marginTop: 14 }}>
-          <a className="btn primary sm" href={`/read/${d.slug}`} target="_blank" rel="noopener noreferrer">
-            {isL ? "Open Master Notes" : "Open Quick Notes"}
+          <a
+            className="btn primary sm"
+            href={user ? `/read/${d.slug}` : `/login?next=${encodeURIComponent(`/read/${d.slug}`)}`}
+            target={user ? "_blank" : undefined}
+            rel="noopener noreferrer"
+          >
+            {user ? (isL ? "Open Master Notes" : "Open Quick Notes") : "Sign in to read"}
           </a>
           <span className="small muted" style={{ fontWeight: 600, marginLeft: "auto" }}>{d.pages} pages</span>
         </div>

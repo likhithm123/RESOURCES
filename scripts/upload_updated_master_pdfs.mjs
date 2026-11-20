@@ -8,10 +8,7 @@ const auth = "Basic " + Buffer.from(process.env.IMAGEKIT_PRIVATE_KEY + ":").toSt
 const dir = path.resolve("..", "all_pdfs_local", "02_long_form_master_editions_pdfs");
 
 const targetFiles = [
-  "01-cpp-basics-to-advanced-master.pdf",
-  "02-python-basics-to-pandas-master.pdf",
-  "09-aws-cloud-master.pdf",
-  "26-rest-apis-master.pdf"
+  "21-sde-role-master.pdf"
 ];
 
 console.log(`Uploading ${targetFiles.length} updated Master PDFs to ImageKit /resources-portal/long-pdfs...`);

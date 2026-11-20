@@ -22,7 +22,6 @@ export default function Track() {
   const [docs, setDocs] = useState<Record<string, Doc>>({});
   const [open, setOpen] = useState<Set<string>>(new Set());
   const [q, setQ] = useState(""); const [hideDone, setHideDone] = useState(false); const [err, setErr] = useState(""); const [edit, setEdit] = useState(false);
-  const [edition, setEdition] = useState<"all" | "master" | "short">("all");
   useEffect(() => {
     if (user) {
       api("/progress").then(r => {
@@ -117,11 +116,6 @@ export default function Track() {
     <Msg>{err}</Msg>
     <div className="row" style={{ marginBottom: 12, flexWrap: "wrap", gap: 10, alignItems: "center" }}>
       <input placeholder="Search a topic or problem (e.g. binary search, joins, kafka, kubernetes)" value={q} onChange={e => setQ(e.target.value)} style={{ flex: 1, minWidth: 220 }} aria-label="Search topics" />
-      <div className="row small" style={{ gap: 6 }}>
-        <button type="button" className={`sm ${edition === "all" ? "primary" : ""}`} onClick={() => setEdition("all")}>All Editions</button>
-        <button type="button" className={`sm ${edition === "master" ? "primary" : ""}`} onClick={() => setEdition("master")}>Master Long</button>
-        <button type="button" className={`sm ${edition === "short" ? "primary" : ""}`} onClick={() => setEdition("short")}>Quick Short</button>
-      </div>
       <label className="row small"><input type="checkbox" checked={hideDone} onChange={e => setHideDone(e.target.checked)} /> Hide completed</label>
       <button className="sm" onClick={() => setEdit(!edit)}>{edit ? "Done customising" : "Customise notebooks"}</button>
     </div>
@@ -205,16 +199,15 @@ export default function Track() {
             {sOpen && shown.map(it => {
               const masterP = it.masterPage || sec.masterPage || it.page || sec.page;
               const shortP = it.page || sec.page || it.masterPage || sec.masterPage;
-              const isShortMode = edition === "short";
-              const targetPage = isShortMode ? shortP : masterP;
-              const targetUrl = isShortMode ? shortRead(shortP, it.id) : masterRead(masterP, it.id);
-              const label = isShortMode ? `Quick · p.${shortP}` : `Notes · p.${masterP}`;
+              const targetPage = masterP;
+              const targetUrl = masterRead(masterP, it.id);
+              const label = `Notes · p.${masterP}`;
 
               return <div className={`item ${done.has(it.id) ? "done" : ""}`} key={it.id}>
                 <input type="checkbox" checked={done.has(it.id)} onChange={e => mark([it.id], e.target.checked)} aria-label={`Done: ${it.title}`} />
-                <a className="t" href={targetUrl} target="_blank" rel="noopener noreferrer" title={`Open ${isShortMode ? "quick revision" : "master"} notes at this topic in new tab`}>{it.title}</a>
-                {targetPage && <a className="btn sm primary" href={targetUrl} target="_blank" rel="noopener noreferrer" title={`Open ${isShortMode ? "quick revision" : "master"} notes at this topic in new tab`}>{label}</a>}
-                {edition === "all" && shortP && shortP !== masterP && <a className="btn sm" href={shortRead(shortP, it.id)} target="_blank" rel="noopener noreferrer" title="Open Quick Revision notes in new tab">Quick · p.{shortP}</a>}
+                <a className="t" href={targetUrl} target="_blank" rel="noopener noreferrer" title="Open master notes at this topic in new tab">{it.title}</a>
+                {targetPage && <a className="btn sm primary" href={targetUrl} target="_blank" rel="noopener noreferrer" title="Open master notes at this topic in new tab">{label}</a>}
+                {shortP && shortP !== masterP && <a className="btn sm" href={shortRead(shortP, it.id)} target="_blank" rel="noopener noreferrer" title="Open Quick Revision notes in new tab">Quick · p.{shortP}</a>}
                 {nb.slug === A2Z && <a className="btn sm" href={`https://takeuforward.org/prep-hub/strivers-a2z-dsa-sheet?note=${tufSlug(it.title)}`} target="_blank" rel="noopener noreferrer" title="Extra resource on takeUforward">TUF ↗</a>}
               </div>;
             })}

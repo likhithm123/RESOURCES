@@ -153,12 +153,10 @@ export default function Track() {
       const isDsa = nb.slug.includes("dsa");
       const isA2Z = nb.slug === A2Z;
       const read = (page?: number, itemId?: string) => `/read/${nb.slug}${page ? `?page=${page}` : ""}${itemId ? `${page ? "&" : "?"}item=${encodeURIComponent(itemId)}` : ""}`;
-      const doc = docs[nb.slug];
       const prefix = nb.slug.slice(0, 3);
-      const masterDoc = Object.values(docs).find(d => (d.slug === `${nb.slug}-master` || (d.slug.startsWith(prefix) && d.slug.endsWith("-master"))));
+      const masterDoc = Object.values(docs || {}).find(d => (d.slug === `${nb.slug}-master` || (d.slug.startsWith(prefix) && d.slug.endsWith("-master"))));
       const masterSlug = masterDoc ? masterDoc.slug : `${nb.slug}-master`;
-      const quickPdf = `https://ik.imagekit.io/likhi/resources-portal/pdfs/${nb.slug}.pdf`;
-      const masterPdf = `https://ik.imagekit.io/likhi/resources-portal/long-pdfs/${masterSlug}.pdf`;
+      const masterRead = (page?: number, itemId?: string) => `/read/${masterSlug}${page ? `?page=${page}` : ""}${itemId ? `${page ? "&" : "?"}item=${encodeURIComponent(itemId)}` : ""}`;
 
       return <div className={`nb ${isA2Z ? "nb-a2z" : isDsa ? "nb-dsa" : ""}`} key={nb.slug}>
         <div className="nb-head" onClick={() => flip(nb.slug)} role="button" aria-expanded={isOpen}>
@@ -173,11 +171,9 @@ export default function Track() {
             <div className="small muted">{items.length ? `${d} / ${items.length} done` : "Notes coming soon"}</div>
           </div>
           <div className="row" style={{ width: 140 }}><Bar d={d} n={items.length} /></div>
-          <div className="row" style={{ gap: 6, flexWrap: "wrap", alignItems: "center" }} onClick={e => e.stopPropagation()}>
-            <Link className="btn sm primary" to={read()}>Open notes</Link>
-            <a className="btn sm" href={quickPdf} target="_blank" rel="noopener noreferrer" title="Direct Quick Revision PDF">PDF</a>
-            <Link className="btn sm" to={`/read/${masterSlug}`} style={{ borderColor: "var(--ink)", color: "var(--ink)" }}>Master {masterDoc ? `(${masterDoc.pages}p)` : ""}</Link>
-            <a className="btn sm" href={masterPdf} target="_blank" rel="noopener noreferrer" title="Direct Long-Form Master PDF" style={{ borderColor: "#1b3fae", color: "#1b3fae", fontWeight: 600 }}>Master PDF</a>
+          <div className="row" style={{ gap: 8, flexWrap: "wrap", alignItems: "center" }} onClick={e => e.stopPropagation()}>
+            <a className="btn sm" href={read()} target="_blank" rel="noopener noreferrer" title="Open Quick Revision Notes in new tab">Quick Revise</a>
+            <a className="btn sm primary" href={masterRead()} target="_blank" rel="noopener noreferrer" title="Open Master Deep-Dive Edition in new tab">Master Edition {masterDoc ? `(${masterDoc.pages}p)` : ""}</a>
           </div>
         </div>
         {isOpen && sections.map(sec => {
@@ -199,9 +195,9 @@ export default function Track() {
             </div>
             {sOpen && shown.map(it => <div className={`item ${done.has(it.id) ? "done" : ""}`} key={it.id}>
               <input type="checkbox" checked={done.has(it.id)} onChange={e => mark([it.id], e.target.checked)} aria-label={`Done: ${it.title}`} />
-              <Link className="t" to={read(it.page || sec.page, it.id)} onClick={() => mark([it.id], true)} title="Open the notes at this topic">{it.title}</Link>
-              {(it.page || sec.page) && <Link className="btn sm primary" to={read(it.page || sec.page, it.id)} onClick={() => mark([it.id], true)} title="Open our notes at this topic">Notes · p.{it.page || sec.page}</Link>}
-              {nb.slug === A2Z && <a className="btn sm" href={`https://takeuforward.org/prep-hub/strivers-a2z-dsa-sheet?note=${tufSlug(it.title)}`} target="_blank" rel="noopener noreferrer" title="Extra resource on takeUforward">TUF</a>}
+              <a className="t" href={masterRead(it.page || sec.page, it.id)} target="_blank" rel="noopener noreferrer" onClick={() => mark([it.id], true)} title="Open master notes at this topic in new tab">{it.title}</a>
+              {(it.page || sec.page) && <a className="btn sm primary" href={masterRead(it.page || sec.page, it.id)} target="_blank" rel="noopener noreferrer" onClick={() => mark([it.id], true)} title="Open master notes at this topic in new tab">Notes · p.{it.page || sec.page}</a>}
+              {nb.slug === A2Z && <a className="btn sm" href={`https://takeuforward.org/prep-hub/strivers-a2z-dsa-sheet?note=${tufSlug(it.title)}`} target="_blank" rel="noopener noreferrer" title="Extra resource on takeUforward">TUF ↗</a>}
             </div>)}
           </div>;
         })}

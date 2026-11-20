@@ -36,8 +36,7 @@ export function Library() {
         </div>
         <p className="small muted" style={{ marginTop: 8 }}>{d.description || `${d.pages} pages`}</p>
         <div className="row" style={{ gap: 8, alignItems: "center", marginTop: 12 }}>
-          <Link className="btn primary sm" to={`/read/${d.slug}`}>Read</Link>
-          <a className="btn sm" href={pdfUrl} target="_blank" rel="noopener noreferrer" title="Direct PDF">PDF</a>
+          <a className="btn primary sm" href={`/read/${d.slug}`} target="_blank" rel="noopener noreferrer">Read notes</a>
           <span className="small muted" style={{ fontWeight: 600 }}>{d.pages} pages</span>
         </div>
       </div>;
@@ -132,7 +131,7 @@ export function Certifications() {
 
   return <>
     <div className="row"><h1 style={{ flex: 1 }}>High-Value Tech Certifications</h1>
-      <Link to="/read/37-top-tech-certifications-guide" className="btn sm primary">Open Certifications Study Guide PDF ↗</Link>
+      <a href="/read/37-top-tech-certifications-guide-master" target="_blank" rel="noopener noreferrer" className="btn sm primary">Open Certifications Study Guide ↗</a>
     </div>
     <p className="muted">Hand-curated free and paid certifications that carry genuine weight with hiring managers across Cloud, DevOps, Cyber Security, and Software Engineering.</p>
     <Msg>{err}</Msg>
@@ -146,6 +145,7 @@ export function Certifications() {
       </select>
       <select value={role} onChange={e => setRole(e.target.value)} aria-label="Filter by role" style={{ width: 160 }}>
         <option value="all">All Roles</option>
+        <option value="ai">AI / GenAI / Claude</option>
         <option value="cloud">Cloud / AWS / Azure</option>
         <option value="devops">DevOps / Kubernetes</option>
         <option value="security">Cyber Security</option>

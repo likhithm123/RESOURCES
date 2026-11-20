@@ -191,15 +191,43 @@ app.get("/docs", async c => {
 });
 const signView = payload => { const p = Buffer.from(JSON.stringify(payload)).toString("base64url"); return `${p}.${hmacHex("sha256", secret(), "view:" + p)}`; };
 const viewKey = token => crypto.createHmac("sha256", secret()).update("key:" + token).digest();   // 32 bytes
-// Opens a document: returns a 30-minute view token bound to this user plus the key that decrypts its pages.
+// Opens a document: returns a 2-hour view token bound to this user plus the key that decrypts its pages.
 app.post("/docs/:slug/open", async c => {
-  const u = auth(c);
+  const u = c.get("user") || { id: 0, email: "guest@portal.local", role: "guest" };
   const d = await db.first("SELECT * FROM rp_documents WHERE slug = ? AND (published = 1 OR ? = 'admin')", [c.req.param("slug"), u.role]);
   if (!d) fail(404, "Document not found.");
-  const token = signView({ u: u.id, e: u.email, d: d.id, f: d.ik_folder, n: d.pages, s: sha256(getCookie(c, COOKIE) || "").slice(0, 16), x: Math.floor(Date.now() / 1000) + 3600 });
+  const cookieSig = sha256(getCookie(c, COOKIE) || "guest").slice(0, 16);
+  const token = signView({ u: u.id, e: u.email, slug: d.slug, d: d.id, f: d.ik_folder, n: d.pages, s: cookieSig, x: Math.floor(Date.now() / 1000) + 7200 });
   await audit(c, "doc.open", d.slug);
   const searchable = !!(await db.first("SELECT 1 AS y FROM rp_doc_pages WHERE doc_id = ? LIMIT 1", [d.id]));
-  return c.json({ token, key: viewKey(token).toString("base64"), pages: d.pages, title: d.title, slug: d.slug, searchable });
+  return c.json({ token, key: viewKey(token).toString("base64"), pages: d.pages, title: d.title, slug: d.slug, searchable, email: u.email });
+});
+
+// Stream compressed vector PDF as opaque binary stream for client-side protected rendering
+app.get("/view-pdf/:token", async c => {
+  const token = c.req.param("token");
+  const [p, sig] = (token || "").split(".");
+  if (!p || !sig || !safeEqual(sig, hmacHex("sha256", secret(), "view:" + p))) fail(403, "Invalid view token.");
+  const v = parse(Buffer.from(p, "base64url").toString(), {});
+  if (v.x < Math.floor(Date.now() / 1000)) fail(403, "This view has expired. Reopen the document.");
+  const cookieSig = sha256(getCookie(c, COOKIE) || "guest").slice(0, 16);
+  if (v.s !== cookieSig) fail(401, "Session mismatch. Please refresh.");
+
+  const isMaster = v.slug.endsWith("-master") || v.slug.endsWith("-long");
+  const folder = isMaster ? "long-pdfs" : "pdfs";
+  const ikUrl = `https://ik.imagekit.io/likhi/resources-portal/${folder}/${v.slug}.pdf`;
+
+  const res = await fetch(ikUrl);
+  if (!res.ok) fail(res.status, "Document could not be retrieved.");
+
+  return new Response(res.body, {
+    headers: {
+      "Content-Type": "application/octet-stream",
+      "Cache-Control": "private, no-store, no-cache, must-revalidate",
+      "Content-Disposition": "inline; filename=\"secured-view.bin\"",
+      "X-Content-Type-Options": "nosniff"
+    }
+  });
 });
 // Pages as AES-256-GCM ciphertext. GET /view/<token>/<first>-<last>?w=<width>  (max 4 pages per call).
 // Response = for each page: 4-byte big-endian length + (iv | ciphertext | tag). The original PDF is never stored or served.

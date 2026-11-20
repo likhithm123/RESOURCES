@@ -245,8 +245,9 @@ div.f>span {
 }
 
 .auth {
-    max-width: 420px;
-    margin: 40px auto;
+    max-width: 480px;
+    margin: 20px auto;
+    width: 100%;
 }
 
 .msg {

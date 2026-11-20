@@ -70,8 +70,8 @@ export function RoleChips({ value, onChange }: { value: string[]; onChange: (v: 
 
 /* ---------------- Sign in / sign up / reset (all confirmed with an emailed code) ---------------- */
 function AuthPage({ mode }: { mode: "login" | "signup" | "forgot" }) {
-  const { setUser } = useAuth(); const nav = useNavigate(); const [sp] = useSearchParams();
-  const next = sp.get("next");
+  const { setUser } = useAuth(); const nav = useNavigate(); const [sp] = useSearchParams(); const loc = useLocation();
+  const next = sp.get("next") || (loc.pathname !== "/" && loc.pathname !== "/login" && loc.pathname !== "/signup" && loc.pathname !== "/forgot" ? loc.pathname + loc.search : null);
   const [f, setF] = useState<{ name: string; email: string; password: string; code: string; phone: string; roles: string[] }>({ name: "", email: "", password: "", code: "", phone: "", roles: ALL_ROLES });
   const [consent, setConsent] = useState(false);
   const [step, setStep] = useState<"form" | "code">("form");
@@ -132,7 +132,39 @@ function AuthPage({ mode }: { mode: "login" | "signup" | "forgot" }) {
   }
   const title = mode === "signup" ? "Create your account" : mode === "login" ? "Sign in" : "Reset your password";
   return <div className="auth card">
-    <h1>{title}</h1>
+    {mode !== "forgot" && step === "form" && (
+      <div className="auth-nav-tabs" style={{ display: "flex", borderBottom: "1px solid var(--line)", marginBottom: 18 }}>
+        <Link
+          to={next ? `/login?next=${encodeURIComponent(next)}` : "/login"}
+          style={{
+            flex: 1,
+            textAlign: "center",
+            padding: "8px 0",
+            fontWeight: mode === "login" ? 700 : 500,
+            color: mode === "login" ? "var(--ink)" : "var(--muted)",
+            borderBottom: mode === "login" ? "2px solid var(--ink)" : "2px solid transparent",
+            textDecoration: "none"
+          }}
+        >
+          Sign in
+        </Link>
+        <Link
+          to={next ? `/signup?next=${encodeURIComponent(next)}` : "/signup"}
+          style={{
+            flex: 1,
+            textAlign: "center",
+            padding: "8px 0",
+            fontWeight: mode === "signup" ? 700 : 500,
+            color: mode === "signup" ? "var(--ink)" : "var(--muted)",
+            borderBottom: mode === "signup" ? "2px solid var(--ink)" : "2px solid transparent",
+            textDecoration: "none"
+          }}
+        >
+          Create account
+        </Link>
+      </div>
+    )}
+    <h1 style={{ marginTop: mode !== "forgot" && step === "form" ? 0 : undefined }}>{title}</h1>
     <p className="muted small">Handwritten-style notes, a track sheet that remembers your progress, and interview prep for every role.</p>
     {next && <Msg kind="info">Sign in required to access and view notes. Please sign in or create an account to continue.</Msg>}
     <Msg>{err}</Msg><Msg kind="info">{info}</Msg>
@@ -241,59 +273,81 @@ export default function App() {
   const refresh = async () => { setUser((await api("/me")).user); };
   useEffect(() => { refresh().catch(() => {}).finally(() => setReady(true)); }, []);
   const nav = useNavigate();
-  const loc = useLocation();
-  if (!ready) return <div className="wrap muted">Loading...</div>;
-  const tab = ({ isActive }: { isActive: boolean }) => `tab ${isActive ? "active" : ""}`;
-  const guard = (el: React.ReactElement) => (
-    user ? el : <Navigate to={`/login?next=${encodeURIComponent(loc.pathname + loc.search)}`} replace />
-  );
-  return <Ctx.Provider value={{ user, setUser, refresh }}>
-    <header className="nav"><div className="nav-in">
-      <Link to="/" className="brand">Resources Portal</Link>
-      {user ? <>
-        <NavLink to="/" end className={tab}>Track sheet</NavLink>
-        <NavLink to="/library" className={tab}>Notes</NavLink>
-        <NavLink to="/certifications" className={tab}>Certifications</NavLink>
-        <NavLink to="/resources" className={tab}>Resources</NavLink>
-        <NavLink to="/projects" className={tab}>Projects</NavLink>
-        <NavLink to="/connect" className={tab}>Connect</NavLink>
-        {user.role === "admin" && <NavLink to="/admin" className={tab}>Admin</NavLink>}
-        <span className="right small muted">{user.name}</span>
-        <NavLink to="/plan" className={tab}>My plan</NavLink>
-        <button className="sm" onClick={async () => { await api("/auth/logout", "POST", {}); setUser(null); nav("/login"); }}>Sign out</button>
-      </> : <>
-        <NavLink to="/" end className={tab}>Track sheet</NavLink>
-        <NavLink to="/library" className={tab}>Notes</NavLink>
-        <NavLink to="/certifications" className={tab}>Certifications</NavLink>
-        <NavLink to="/resources" className={tab}>Resources</NavLink>
-        <NavLink to="/projects" className={tab}>Projects</NavLink>
-        <div className="right row" style={{ gap: 8 }}>
-          <Link to="/login" className="btn sm">Sign in</Link>
-          <Link to="/signup" className="btn sm btn-signup">Sign up</Link>
+  if (!ready) return <div className="wrap muted" style={{ textAlign: "center", padding: "80px 20px" }}>Loading...</div>;
+
+  // Unauthenticated: show only sign-in / sign-up page without navbar
+  if (!user) {
+    return (
+      <Ctx.Provider value={{ user, setUser, refresh }}>
+        <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", padding: "40px 16px", background: "var(--bg, #f4f6fb)", boxSizing: "border-box" }}>
+          <div style={{ textAlign: "center", marginBottom: 20 }}>
+            <h1 style={{ fontSize: 28, margin: "0 0 6px", color: "var(--ink, #0f172a)", letterSpacing: -0.5 }}>Resources Portal</h1>
+            <p className="muted small" style={{ margin: 0 }}>Computer Science, Tech Roles & Interview Preparation</p>
+          </div>
+          <main style={{ width: "100%", maxWidth: 500 }}>
+            <Routes>
+              <Route path="/signup" element={<AuthPage mode="signup" />} />
+              <Route path="/forgot" element={<AuthPage mode="forgot" />} />
+              <Route path="/terms" element={<div className="card"><Legal type="terms" /><div style={{ marginTop: 16 }}><Link to="/signup" className="btn sm">Back to Sign up</Link></div></div>} />
+              <Route path="/privacy" element={<div className="card"><Legal type="privacy" /><div style={{ marginTop: 16 }}><Link to="/signup" className="btn sm">Back to Sign up</Link></div></div>} />
+              <Route path="*" element={<AuthPage mode="login" />} />
+            </Routes>
+          </main>
+          <div className="small muted" style={{ marginTop: 24, textAlign: "center", lineHeight: 1.6 }}>
+            <div style={{ marginBottom: 6 }}>
+              <Link to="/terms" style={{ color: "var(--muted)" }}>Terms & Conditions</Link> · <Link to="/privacy" style={{ color: "var(--muted)" }}>Privacy Policy</Link>
+            </div>
+            Sign in or create an account to access all curriculum notes, track sheets, and interview prep.
+          </div>
         </div>
-      </>}
-    </div></header>
-    <Routes>
-      <Route path="/read/:slug" element={guard(<Reader />)} />
-      <Route path="*" element={<main className="wrap"><Routes>
-        <Route path="/login" element={user ? <Navigate to="/" replace /> : <AuthPage mode="login" />} />
-        <Route path="/signup" element={user ? <Navigate to="/" replace /> : <AuthPage mode="signup" />} />
-        <Route path="/forgot" element={<AuthPage mode="forgot" />} />
-        <Route path="/" element={<Track />} />
-        <Route path="/plan" element={guard(<Plan />)} />
-        <Route path="/library" element={<Library />} />
-        <Route path="/certifications" element={<Certifications />} />
-        <Route path="/feedback" element={<Feedback />} />
-        <Route path="/terms" element={<Legal type="terms" />} />
-        <Route path="/privacy" element={<Legal type="privacy" />} />
-        <Route path="/resources" element={<Links kind="resource" />} />
-        <Route path="/projects" element={<Links kind="project" />} />
-        <Route path="/connect" element={guard(<Connect />)} />
-        <Route path="/admin/*" element={guard(user?.role === "admin" ? <Admin /> : <Navigate to="/" replace />)} />
-        <Route path="/webteam" element={<WebTeam />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes></main>} />
-    </Routes>
-    <Footer />
-  </Ctx.Provider>;
+      </Ctx.Provider>
+    );
+  }
+
+  // Authenticated: full portal with navigation bar, track sheet home page, and all content unlocked
+  const tab = ({ isActive }: { isActive: boolean }) => `tab ${isActive ? "active" : ""}`;
+  return (
+    <Ctx.Provider value={{ user, setUser, refresh }}>
+      <header className="nav">
+        <div className="nav-in">
+          <Link to="/" className="brand">Resources Portal</Link>
+          <NavLink to="/" end className={tab}>Track sheet</NavLink>
+          <NavLink to="/library" className={tab}>Notes</NavLink>
+          <NavLink to="/certifications" className={tab}>Certifications</NavLink>
+          <NavLink to="/resources" className={tab}>Resources</NavLink>
+          <NavLink to="/projects" className={tab}>Projects</NavLink>
+          <NavLink to="/connect" className={tab}>Connect</NavLink>
+          {user.role === "admin" && <NavLink to="/admin" className={tab}>Admin</NavLink>}
+          <span className="right small muted">{user.name}</span>
+          <NavLink to="/plan" className={tab}>My plan</NavLink>
+          <button className="sm" onClick={async () => { await api("/auth/logout", "POST", {}); setUser(null); nav("/login"); }}>Sign out</button>
+        </div>
+      </header>
+      <Routes>
+        <Route path="/read/:slug" element={<Reader />} />
+        <Route path="*" element={
+          <main className="wrap">
+            <Routes>
+              <Route path="/" element={<Track />} />
+              <Route path="/plan" element={<Plan />} />
+              <Route path="/library" element={<Library />} />
+              <Route path="/certifications" element={<Certifications />} />
+              <Route path="/feedback" element={<Feedback />} />
+              <Route path="/terms" element={<Legal type="terms" />} />
+              <Route path="/privacy" element={<Legal type="privacy" />} />
+              <Route path="/resources" element={<Links kind="resource" />} />
+              <Route path="/projects" element={<Links kind="project" />} />
+              <Route path="/connect" element={<Connect />} />
+              <Route path="/admin/*" element={user.role === "admin" ? <Admin /> : <Navigate to="/" replace />} />
+              <Route path="/webteam" element={<WebTeam />} />
+              <Route path="/login" element={<Navigate to="/" replace />} />
+              <Route path="/signup" element={<Navigate to="/" replace />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </main>
+        } />
+      </Routes>
+      <Footer />
+    </Ctx.Provider>
+  );
 }

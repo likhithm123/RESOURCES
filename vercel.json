@@ -8,7 +8,7 @@
       "destination": "/api"
     },
     {
-      "source": "/((?!api/|assets/|robots\\.txt|sitemap\\.xml|site\\.webmanifest|favicon|apple-touch-icon|icon-|og-image|humans\\.txt|\\.well-known/).*)",
+      "source": "/((?!api/|assets/|pdf\\.worker|fonts/|robots\\.txt|sitemap\\.xml|site\\.webmanifest|favicon|apple-touch-icon|icon-|og-image|humans\\.txt|\\.well-known/).*)",
       "destination": "/index.html"
     }
   ],

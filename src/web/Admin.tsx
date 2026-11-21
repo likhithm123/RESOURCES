@@ -66,7 +66,11 @@ function Overview() {
 /** Renders every PDF page to a JPEG in the browser and uploads the images as private ImageKit files. The PDF itself is never uploaded. */
 async function uploadPdf(file: File, folder: string, onProgress: (done: number, total: number) => void) {
   const pdfjs = await import("pdfjs-dist");
-  pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+  try {
+    pdfjs.GlobalWorkerOptions.workerSrc = new URL("/pdf.worker.min.mjs", window.location.origin).toString();
+  } catch {
+    pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+  }
   const pdf = await pdfjs.getDocument({ data: await file.arrayBuffer(), isEvalSupported: false } as any).promise;
   const canvas = document.createElement("canvas");
   const texts: { page: number; text: string; boxes: number[][] }[] = [];

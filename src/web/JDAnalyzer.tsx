@@ -233,7 +233,10 @@ export default function JDAnalyzer() {
         setParseStatus("Extracting text from PDF via PDF.js engine...");
         try {
           const pdfjsLib = await import("pdfjs-dist");
-          pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+          try {
+            const workerUrl = new URL("/pdf.worker.min.mjs", window.location.origin).toString();
+            pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
+          } catch {}
           const ab = await file.arrayBuffer();
           const pdf = await pdfjsLib.getDocument({ data: ab, isEvalSupported: false } as any).promise;
           const pageTexts: string[] = [];
@@ -248,7 +251,12 @@ export default function JDAnalyzer() {
         } catch (clientErr: any) {
           console.warn("Client PDF extraction failed, using server fallback:", clientErr);
           setParseStatus("Extracting PDF text via server engine...");
-          extracted = await parseFileViaServer(file);
+          try {
+            extracted = await parseFileViaServer(file);
+          } catch (serverErr: any) {
+            console.error("Server PDF fallback failed:", serverErr);
+            throw new Error("Could not extract readable text from this PDF. Please copy and paste the job description text into the text box.");
+          }
         }
       } else if (name.endsWith(".docx") || name.endsWith(".doc")) {
         setParseStatus("Parsing Word document...");
@@ -260,7 +268,12 @@ export default function JDAnalyzer() {
         } catch (docxErr: any) {
           console.warn("Client DOCX extraction failed, using server fallback:", docxErr);
           setParseStatus("Parsing Word document via server engine...");
-          extracted = await parseFileViaServer(file);
+          try {
+            extracted = await parseFileViaServer(file);
+          } catch (serverErr: any) {
+            console.error("Server Word fallback failed:", serverErr);
+            throw new Error("Could not extract readable text from this Word document. Please copy and paste the job description text into the text box.");
+          }
         }
       } else {
         // Plain text / markdown
@@ -277,10 +290,10 @@ export default function JDAnalyzer() {
       await handleAnalyze(extracted, company);
     } catch (err: any) {
       const msg = err.message || String(err);
-      if (msg.includes("fake worker") || msg.includes("dynamically imported module") || msg.includes("PDF.js")) {
+      if (msg.includes("fake worker") || msg.includes("dynamically imported module") || msg.includes("PDF.js") || msg.includes("Worker")) {
         // Transparent fallback to server-side parser
         try {
-          setParseStatus("Extracting PDF text via server engine...");
+          setParseStatus("Extracting document text via server engine...");
           const serverExtracted = await parseFileViaServer(file);
           if (serverExtracted && serverExtracted.trim()) {
             setJdText(serverExtracted);
@@ -289,7 +302,7 @@ export default function JDAnalyzer() {
             return;
           }
         } catch (fallbackErr: any) {
-          setError(fallbackErr.message || "Could not extract readable text from this PDF.");
+          setError("Could not extract readable text from this document. Please copy and paste the job description text directly.");
           return;
         }
       }
@@ -319,7 +332,12 @@ export default function JDAnalyzer() {
       } catch (ocrClientErr: any) {
         console.warn("Client OCR failed, trying server OCR fallback:", ocrClientErr);
         setParseStatus("Recognizing text via server OCR engine...");
-        text = await parseFileViaServer(file);
+        try {
+          text = await parseFileViaServer(file);
+        } catch (serverOcrErr: any) {
+          console.error("Server OCR failed:", serverOcrErr);
+          throw new Error("Could not extract readable text from this image. Please provide a clear screenshot or paste text directly.");
+        }
       }
 
       if (!text || text.length < 20) {
@@ -338,14 +356,25 @@ export default function JDAnalyzer() {
     }
   }
 
+  // Universal file dispatcher (handles any file type dropped or selected)
+  function handleAnyFile(file: File) {
+    const name = file.name.toLowerCase();
+    const isImage = file.type.startsWith("image/") || /\.(png|jpe?g|webp|bmp|gif)$/i.test(name);
+    if (isImage) {
+      processImage(file);
+    } else {
+      processDocument(file);
+    }
+  }
+
   function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (file) processDocument(file);
+    if (file) handleAnyFile(file);
   }
 
   function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (file) processImage(file);
+    if (file) handleAnyFile(file);
   }
 
   // Toggle item completion
@@ -560,13 +589,13 @@ export default function JDAnalyzer() {
                   e.preventDefault();
                   setIsDragging(false);
                   const file = e.dataTransfer.files?.[0];
-                  if (file) processDocument(file);
+                  if (file) handleAnyFile(file);
                 }}
               >
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".pdf,.docx,.txt,.md"
+                  accept=".pdf,.docx,.doc,.txt,.md,image/png,image/jpeg,image/webp"
                   style={{ display: "none" }}
                   onChange={handleFileUpload}
                 />
@@ -588,13 +617,13 @@ export default function JDAnalyzer() {
                   e.preventDefault();
                   setIsDragging(false);
                   const file = e.dataTransfer.files?.[0];
-                  if (file) processImage(file);
+                  if (file) handleAnyFile(file);
                 }}
               >
                 <input
                   ref={imgInputRef}
                   type="file"
-                  accept="image/png,image/jpeg,image/webp"
+                  accept="image/png,image/jpeg,image/webp,.pdf,.docx,.doc,.txt,.md"
                   style={{ display: "none" }}
                   onChange={handleImageUpload}
                 />

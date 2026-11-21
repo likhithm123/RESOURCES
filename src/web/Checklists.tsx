@@ -677,7 +677,7 @@ export default function Checklists() {
                           title="Remove topic from checklist"
                           onClick={() => handleDeleteItem(item.id)}
                         >
-                          ✕
+                          x
                         </button>
                       </div>
                     </div>
@@ -695,7 +695,7 @@ export default function Checklists() {
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Create New Checklist Tab</h3>
-              <button className="modal-close" onClick={() => setShowAddModal(false)}>✕</button>
+              <button className="modal-close" onClick={() => setShowAddModal(false)}>x</button>
             </div>
             <form onSubmit={handleCreateChecklist} className="modal-body">
               <div className="form-field">
@@ -764,7 +764,7 @@ export default function Checklists() {
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Add Topic to Checklist</h3>
-              <button className="modal-close" onClick={() => setShowAddItemModal(false)}>✕</button>
+              <button className="modal-close" onClick={() => setShowAddItemModal(false)}>x</button>
             </div>
             <form onSubmit={handleAddItem} className="modal-body">
               <div className="form-field">

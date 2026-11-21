@@ -233,7 +233,7 @@ export default function JDAnalyzer() {
         setParseStatus("Extracting text from PDF via PDF.js engine...");
         try {
           const pdfjsLib = await import("pdfjs-dist");
-          pdfjsLib.GlobalWorkerOptions.workerSrc = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url")).default;
+          pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
           const ab = await file.arrayBuffer();
           const pdf = await pdfjsLib.getDocument({ data: ab, isEvalSupported: false } as any).promise;
           const pageTexts: string[] = [];
@@ -276,6 +276,23 @@ export default function JDAnalyzer() {
       setParseStatus("Analyzing extracted job description...");
       await handleAnalyze(extracted, company);
     } catch (err: any) {
+      const msg = err.message || String(err);
+      if (msg.includes("fake worker") || msg.includes("dynamically imported module") || msg.includes("PDF.js")) {
+        // Transparent fallback to server-side parser
+        try {
+          setParseStatus("Extracting PDF text via server engine...");
+          const serverExtracted = await parseFileViaServer(file);
+          if (serverExtracted && serverExtracted.trim()) {
+            setJdText(serverExtracted);
+            setParseStatus("Analyzing extracted job description...");
+            await handleAnalyze(serverExtracted, company);
+            return;
+          }
+        } catch (fallbackErr: any) {
+          setError(fallbackErr.message || "Could not extract readable text from this PDF.");
+          return;
+        }
+      }
       setError(err.message || "Could not extract text from this file.");
     } finally {
       setParsingFile(false);
@@ -785,7 +802,7 @@ export default function JDAnalyzer() {
                       className="btn-secondary"
                       style={{ textDecoration: "none", display: "inline-flex", alignItems: "center" }}
                     >
-                      View in Checklists Tab ➔
+                      View in Checklists Tab -&gt;
                     </Link>
                   )}
                   <button type="button" className="btn-secondary" onClick={exportMarkdown}>

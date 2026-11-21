@@ -132,7 +132,7 @@ export default function Reader() {
         setDownloadPct(100);
 
         const pdfjs = await import("pdfjs-dist");
-        pdfjs.GlobalWorkerOptions.workerSrc = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url")).default;
+        pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
         const pdf = await pdfjs.getDocument({ data: fullBuffer, isEvalSupported: false } as any).promise;
         if (!alive.current) return;
         pdfDocRef.current = pdf;

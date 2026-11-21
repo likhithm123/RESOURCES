@@ -312,19 +312,40 @@ export default function App() {
     <Ctx.Provider value={{ user, setUser, refresh }}>
       <header className="nav">
         <div className="nav-in">
-          <Link to="/" className="brand">Resources Portal</Link>
-          <NavLink to="/" end className={tab}>Track sheet</NavLink>
-          <NavLink to="/checklists" className={tab}>Checklists</NavLink>
-          <NavLink to="/jd" className={tab}>JD Prep</NavLink>
-          <NavLink to="/library" className={tab}>Notes</NavLink>
-          <NavLink to="/certifications" className={tab}>Certifications</NavLink>
-          <NavLink to="/resources" className={tab}>Resources</NavLink>
-          <NavLink to="/projects" className={tab}>Projects</NavLink>
-          <NavLink to="/connect" className={tab}>Connect</NavLink>
-          {user.role === "admin" && <NavLink to="/admin" className={tab}>Admin</NavLink>}
-          <span className="right small muted">{user.name}</span>
-          <NavLink to="/plan" className={tab}>My plan</NavLink>
-          <button className="sm" onClick={async () => { await api("/auth/logout", "POST", {}); setUser(null); nav("/login"); }}>Sign out</button>
+          <div className="nav-left">
+            <Link to="/" className="brand" title="Resources Portal">
+              <span className="brand-full">Resources Portal</span>
+              <span className="brand-short">RP</span>
+            </Link>
+          </div>
+          <nav className="nav-center-scroll">
+            <NavLink to="/" end className={tab}>Track sheet</NavLink>
+            <NavLink to="/checklists" className={tab}>Checklists</NavLink>
+            <NavLink to="/jd" className={tab}>JD Prep</NavLink>
+            <NavLink to="/library" className={tab}>Notes</NavLink>
+            <NavLink to="/certifications" className={tab}>Certifications</NavLink>
+            <NavLink to="/resources" className={tab}>Resources</NavLink>
+            <NavLink to="/projects" className={tab}>Projects</NavLink>
+            <NavLink to="/connect" className={tab}>Connect</NavLink>
+            <NavLink to="/plan" className={tab}>My plan</NavLink>
+            {user.role === "admin" && <NavLink to="/admin" className={tab}>Admin</NavLink>}
+          </nav>
+          <div className="nav-right">
+            <span className="user-name-badge" title={user.email || user.name}>
+              {user.name ? user.name.split(" ")[0] : "User"}
+            </span>
+            <button
+              className="btn-signout"
+              onClick={async () => {
+                await api("/auth/logout", "POST", {});
+                setUser(null);
+                nav("/login");
+              }}
+              title="Sign out of account"
+            >
+              Sign out
+            </button>
+          </div>
         </div>
       </header>
       <Routes>

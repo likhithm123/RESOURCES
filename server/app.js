@@ -248,39 +248,20 @@ app.post("/docs/:slug/open", async c => {
   return c.json({ token, key: viewKey(token).toString("base64"), pages: d.pages, title: d.title, slug: d.slug, searchable, email: u.email });
 });
 
-// Stream compressed vector PDF as opaque binary stream for client-side protected rendering
-// STRICT: Only authenticated users with matching session cookie can stream document binaries.
-app.get("/view-pdf/:token", async c => {
-  const token = c.req.param("token");
-  const [p, sig] = (token || "").split(".");
-  if (!p || !sig || !safeEqual(sig, hmacHex("sha256", secret(), "view:" + p))) fail(403, "Invalid view token.");
-  const v = parse(Buffer.from(p, "base64url").toString(), {});
-  if (!v.u || v.u <= 0) fail(401, "Please sign in to access files.");
-  if (v.x < Math.floor(Date.now() / 1000)) fail(403, "This view has expired. Reopen the document.");
-  const cookieToken = getCookie(c, COOKIE);
-  if (!cookieToken) fail(401, "Please sign in to access files.");
-  const cookieSig = sha256(cookieToken).slice(0, 16);
-  if (v.s !== cookieSig) fail(401, "Session mismatch. Please sign in.");
-
-  const isMaster = v.slug.endsWith("-master") || v.slug.endsWith("-long");
-  const folder = isMaster ? "long-pdfs" : "pdfs";
-  const ikUrl = `https://ik.imagekit.io/likhi/resources-portal/${folder}/${v.slug}.pdf`;
-
-  const res = await fetch(ikUrl);
-  if (!res.ok) fail(res.status, "Document could not be retrieved.");
-
-  return new Response(res.body, {
-    headers: {
-      "Content-Type": "application/octet-stream",
-      "Cache-Control": "private, no-store, no-cache, must-revalidate",
-      "Content-Disposition": "inline; filename=\"secured-view.bin\"",
-      "X-Content-Type-Options": "nosniff"
-    }
-  });
-});
 // Pages as AES-256-GCM ciphertext. GET /view/<token>/<first>-<last>?w=<width>  (max 4 pages per call).
 // Response = for each page: 4-byte big-endian length + (iv | ciphertext | tag). The original PDF is never stored or served.
 // No database work per request: the signed token carries the user, document folder and page count, and is bound to the session cookie.
+// Per-instance LRU of watermarked page images (plain WebP stays on the server; only ciphertext is sent).
+// Key includes the watermark, so a cached page is only ever re-served to the same reader.
+const pageCache = new Map(); let pageCacheBytes = 0; const PAGE_CACHE_MAX = 64 * 1024 * 1024;
+async function cachedPage(folder, page, wm, width) {
+  const k = `${folder}|${page}|${width}|${wm}`; const hit = pageCache.get(k);
+  if (hit) { pageCache.delete(k); pageCache.set(k, hit); return hit; }
+  const img = await ikPage(folder, page, wm, width);
+  pageCache.set(k, img); pageCacheBytes += img.length;
+  for (const [key, val] of pageCache) { if (pageCacheBytes <= PAGE_CACHE_MAX) break; pageCache.delete(key); pageCacheBytes -= val.length; }
+  return img;
+}
 const pageLimiter = new Map();                                 // per-instance throttle: pages per user per 10 minutes
 app.get("/view/:token/:range", async c => {
   const token = c.req.param("token"); const [p, sig] = token.split(".");
@@ -299,7 +280,7 @@ app.get("/view/:token/:range", async c => {
   if (rec.n > 2500) fail(429, "Too many pages requested. Please wait a few minutes.");
   const width = [700, 900, 1100, 1300].find(x => x >= Number(c.req.query("w") || 1100)) || 1300;
   const wm = `${v.e}  ${new Date().toISOString().slice(0, 10)}`;
-  const imgs = await Promise.all(Array.from({ length: last - first + 1 }, (_, i) => ikPage(v.f, first + i, wm, width)));
+  const imgs = await Promise.all(Array.from({ length: last - first + 1 }, (_, i) => cachedPage(v.f, first + i, wm, width)));
   const key = viewKey(token);
   const parts = imgs.flatMap(img => {
     const iv = crypto.randomBytes(12); const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);

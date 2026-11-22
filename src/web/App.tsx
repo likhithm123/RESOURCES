@@ -3,10 +3,12 @@ import { Link, NavLink, Navigate, Route, Routes, useLocation, useNavigate, useSe
 import { api, type User, type StreakData } from "./api";
 import { CAREER_ROLES } from "../shared/catalog";
 import Track from "./Track";
-import Reader from "./Reader";
-import Admin from "./Admin";
-import JDAnalyzer from "./JDAnalyzer";
-import Checklists from "./Checklists";
+// Heavy pages load on demand so the first visit only downloads the track sheet.
+const Reader = React.lazy(() => import("./Reader"));
+const Admin = React.lazy(() => import("./Admin"));
+const JDAnalyzer = React.lazy(() => import("./JDAnalyzer"));
+const Checklists = React.lazy(() => import("./Checklists"));
+const lazyEl = (el: React.ReactNode) => <React.Suspense fallback={<div className="card small muted" style={{ margin: 24 }}>Loading...</div>}>{el}</React.Suspense>;
 import { StreakNavPill, StreakModal, updateAndroidAppBadge } from "./StreakWidget";
 import { Library, Links, Connect, Certifications, Feedback, Legal } from "./Pages";
 
@@ -385,13 +387,13 @@ export default function App() {
         </div>
       </header>
       <Routes>
-        <Route path="/read/:slug" element={<Reader />} />
+        <Route path="/read/:slug" element={lazyEl(<Reader />)} />
         <Route path="*" element={
           <main className="wrap">
             <Routes>
               <Route path="/" element={<Track />} />
-              <Route path="/checklists" element={<Checklists />} />
-              <Route path="/jd" element={<JDAnalyzer />} />
+              <Route path="/checklists" element={lazyEl(<Checklists />)} />
+              <Route path="/jd" element={lazyEl(<JDAnalyzer />)} />
               <Route path="/plan" element={<Plan />} />
               <Route path="/library" element={<Library />} />
               <Route path="/certifications" element={<Certifications />} />
@@ -401,7 +403,7 @@ export default function App() {
               <Route path="/resources" element={<Links kind="resource" />} />
               <Route path="/projects" element={<Links kind="project" />} />
               <Route path="/connect" element={<Connect />} />
-              <Route path="/admin/*" element={user.role === "admin" ? <Admin /> : <Navigate to="/" replace />} />
+              <Route path="/admin/*" element={user.role === "admin" ? lazyEl(<Admin />) : <Navigate to="/" replace />} />
               <Route path="/webteam" element={<WebTeam />} />
               <Route path="/login" element={<Navigate to="/" replace />} />
               <Route path="/signup" element={<Navigate to="/" replace />} />

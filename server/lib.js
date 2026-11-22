@@ -207,10 +207,13 @@ export function ikUploadAuth() {
   return { token, expire, signature: hmacHex("sha1", e.IMAGEKIT_PRIVATE_KEY, token + expire), publicKey: e.IMAGEKIT_PUBLIC_KEY };
 }
 /** Signed, short-lived URL of a private file (same algorithm as the ImageKit SDKs). */
+// The expiry is rounded to a fixed window so the same page + transform gives the same URL for a while,
+// letting ImageKit's CDN serve repeat requests from cache instead of re-rendering the watermark.
 export function ikSignedUrl(filePath, transform, ttl = 120) {
   const url = new URL(ikBase() + "/" + filePath.replace(/^\/+/, ""));
   if (transform) url.searchParams.set("tr", transform);
-  const expire = Math.floor(Date.now() / 1000) + ttl;
+  const win = 3600, now = Math.floor(Date.now() / 1000);
+  const expire = ttl <= win ? Math.ceil((now + ttl) / win) * win : now + ttl;
   const sig = hmacHex("sha1", e.IMAGEKIT_PRIVATE_KEY, url.toString().replace(ikBase() + "/", "") + expire);
   url.searchParams.append("ik-t", String(expire)); url.searchParams.append("ik-s", sig);
   return url.toString();

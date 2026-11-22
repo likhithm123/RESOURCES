@@ -37,14 +37,6 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
   }
 }
 
-// Capture PWA install prompt globally so it is ready whenever the user triggers install
-(window as any).__pwaInstallPrompt = null;
-window.addEventListener("beforeinstallprompt", (e: any) => {
-  e.preventDefault();
-  (window as any).__pwaInstallPrompt = e;
-  window.dispatchEvent(new CustomEvent("pwa-prompt-ready"));
-});
-
 createRoot(document.getElementById("root")!).render(
   <ErrorBoundary>
     <BrowserRouter>

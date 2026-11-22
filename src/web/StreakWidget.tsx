@@ -189,32 +189,6 @@ export function StreakModal({
     localStorage.getItem("rp_streak_reminder_enabled") === "true"
   );
   const [testingNotification, setTestingNotification] = useState(false);
-  const [installPrompt, setInstallPrompt] = useState<any>(
-    (window as any).__pwaInstallPrompt || null
-  );
-  const [installStatus, setInstallStatus] = useState<string>("");
-
-  useEffect(() => {
-    if ((window as any).__pwaInstallPrompt) {
-      setInstallPrompt((window as any).__pwaInstallPrompt);
-    }
-    const handler = (e: any) => {
-      e.preventDefault();
-      (window as any).__pwaInstallPrompt = e;
-      setInstallPrompt(e);
-    };
-    const onReady = () => {
-      if ((window as any).__pwaInstallPrompt) {
-        setInstallPrompt((window as any).__pwaInstallPrompt);
-      }
-    };
-    window.addEventListener("beforeinstallprompt", handler);
-    window.addEventListener("pwa-prompt-ready", onReady);
-    return () => {
-      window.removeEventListener("beforeinstallprompt", handler);
-      window.removeEventListener("pwa-prompt-ready", onReady);
-    };
-  }, []);
 
   const handleToggleReminder = async () => {
     if (!reminderActive) {
@@ -230,31 +204,6 @@ export function StreakModal({
     setTestingNotification(true);
     await scheduleAndroidReminder(reminderTime);
     setTimeout(() => setTestingNotification(false), 1500);
-  };
-
-  const handleInstallApp = async () => {
-    const prompt = installPrompt || (window as any).__pwaInstallPrompt;
-    if (prompt) {
-      try {
-        await prompt.prompt();
-        const choice = await prompt.userChoice;
-        if (choice.outcome === "accepted") {
-          setInstallPrompt(null);
-          (window as any).__pwaInstallPrompt = null;
-          setInstallStatus("App successfully installed to home screen!");
-        }
-      } catch (err) {
-        console.error("Install prompt error:", err);
-      }
-    } else {
-      alert(
-        "If you do not see 'Add to Home screen' in Chrome:\n\n" +
-        "1. In modern Chrome, look for 'Install app' or 'Install Resources Portal' in the 3-dots menu (⋮).\n" +
-        "2. If it is already installed, the menu will show 'Open in app' instead.\n" +
-        "3. Chrome disables installation in Incognito / Private tabs.\n" +
-        "4. If opened inside WhatsApp or another app, tap 3 dots > 'Open in Chrome' first."
-      );
-    }
   };
 
   return (
@@ -309,21 +258,20 @@ export function StreakModal({
             </div>
           </div>
 
-          {/* Section: Daily Study Reminders & App */}
+          {/* Section: Daily Study Reminders */}
           <div className="streak-section-box">
             <div className="section-title-row">
               <span className="section-icon" aria-hidden="true">⚙</span>
-              <h3 style={{ margin: 0, fontSize: 16 }}>Study Streak Reminders & App</h3>
+              <h3 style={{ margin: 0, fontSize: 16 }}>Daily Study Reminders</h3>
             </div>
             <p className="small muted" style={{ marginTop: 4, marginBottom: 14 }}>
-              Set daily reminder alerts and add the app to your phone home screen to keep your streak alive.
+              Set daily reminder alerts to study your topic before midnight and keep your streak alive.
             </p>
 
-            {/* Feature 1: Daily Reminder Notification */}
             <div className="android-feature-card">
               <div className="feature-header">
                 <div>
-                  <strong>1. Daily Android Reminder Notification</strong>
+                  <strong>Daily Reminder Notification</strong>
                   <div className="small muted">Receive a push alert if you haven't completed your topic before midnight.</div>
                 </div>
                 <label className="switch-toggle" title="Toggle daily reminder">
@@ -358,41 +306,6 @@ export function StreakModal({
                   </button>
                 </div>
               )}
-            </div>
-
-            {/* Feature 2: PWA App Badging & Installation */}
-            <div className="android-feature-card" style={{ marginTop: 12 }}>
-              <div className="feature-header">
-                <div>
-                  <strong>2. Install App to Android Home Screen</strong>
-                  <div className="small muted">
-                    Adds the app to your phone home screen with live streak badges and fast 1-tap access.
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  className="btn sm primary"
-                  onClick={handleInstallApp}
-                >
-                  {installPrompt || (window as any).__pwaInstallPrompt ? "Install Now" : "Install App"}
-                </button>
-              </div>
-
-              {installStatus && (
-                <div className="small" style={{ color: "#2b8a3e", marginTop: 8, fontWeight: 600 }}>
-                  ✓ {installStatus}
-                </div>
-              )}
-
-              <div className="instructions-steps small muted" style={{ marginTop: 8 }}>
-                <strong>If you do not see the option in Chrome:</strong>
-                <ul style={{ margin: "4px 0 0 16px", padding: 0 }}>
-                  <li>Look for <strong>"Install app"</strong> instead of "Add to Home screen" in Chrome's 3-dots (⋮) menu.</li>
-                  <li>Ensure you are in a standard tab (Chrome disables installation in <strong>Incognito</strong> mode).</li>
-                  <li>If the app is already installed, Chrome shows <strong>"Open in app"</strong> instead.</li>
-                  <li>If you opened this inside WhatsApp/Gmail, tap 3 dots &gt; <strong>"Open in Chrome"</strong>.</li>
-                </ul>
-              </div>
             </div>
           </div>
         </div>

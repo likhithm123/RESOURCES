@@ -49,13 +49,6 @@
       "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     },
     {
-      "name": "Android Widget Card",
-      "short_name": "Widget",
-      "description": "Open live compact Android home screen streak widget",
-      "url": "/widget",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
-    },
-    {
       "name": "Curriculum Notes",
       "short_name": "Notes",
       "description": "Study comprehensive handwritten curriculum notebooks",

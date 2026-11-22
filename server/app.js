@@ -8,7 +8,6 @@ import {
   HttpError, fail, randomToken, sha256, hmacHex, safeEqual, secret, hashPassword, verifyPassword, checkPassword,
   cleanEmail, str, safeUrl, jsonArr, parse, adminEmails, clientIp, rateLimit, audit, issueOtp, consumeOtp,
   ikConfigured, ikFolder, ikUploadAuth, ikPage, ikDeleteFolder, sendMail, calculateStreak,
-  createWidgetToken, verifyWidgetToken,
 } from "./lib.js";
 
 const COOKIE = "rp_session";
@@ -22,20 +21,17 @@ app.onError((err, c) => {
   return c.json({ error: "Something went wrong. Please try again." }, 500);
 });
 
-// Security headers + CSRF guard (state-changing requests must be same-origin JSON with a custom header, except token-signed widget actions).
+// Security headers + CSRF guard (state-changing requests must be same-origin JSON with a custom header).
 app.use("*", async (c, next) => {
-  const isWidgetAction = c.req.path === "/api/widget/quick-done";
   if (!["GET", "HEAD", "OPTIONS"].includes(c.req.method)) {
-    if (!isWidgetAction && c.req.header("x-requested-with") !== "portal") fail(403, "Bad request origin.");
+    if (c.req.header("x-requested-with") !== "portal") fail(403, "Bad request origin.");
     const origin = c.req.header("origin");
-    if (!isWidgetAction && prod() && origin && new URL(origin).host !== (c.req.header("x-forwarded-host") || c.req.header("host"))) fail(403, "Bad request origin.");
+    if (prod() && origin && new URL(origin).host !== (c.req.header("x-forwarded-host") || c.req.header("host"))) fail(403, "Bad request origin.");
   }
   await next();
   c.header("Cache-Control", "no-store");
   c.header("X-Content-Type-Options", "nosniff");
-  if (c.req.path !== "/widget" && !c.req.path.startsWith("/api/widget")) {
-    c.header("X-Frame-Options", "DENY");
-  }
+  c.header("X-Frame-Options", "DENY");
   c.header("Referrer-Policy", "no-referrer");
 });
 
@@ -174,29 +170,25 @@ app.get("/progress", async c => {
   const u = auth(c);
   const today = new Date().toISOString().slice(0, 10);
 
-  // Fetch actual study progress records (curriculum items, JD checklists, and explicit study sessions)
-  const [doneRows, auditStudyRows, checklistRows] = await Promise.all([
+  // Fetch actual study progress records (curriculum items and JD checklists)
+  const [doneRows, checklistRows] = await Promise.all([
     db.all("SELECT item_id, updated_at FROM rp_progress WHERE user_id = ?", [u.id]),
-    db.all("SELECT substr(created_at, 1, 10) as day FROM rp_audit WHERE user_id = ? AND action IN ('study.progress', 'study.session', 'study.checklist')", [u.id]),
     db.all("SELECT substr(updated_at, 1, 10) as day FROM rp_job_checklists WHERE user_id = ?", [u.id])
   ]);
 
   const progressDays = doneRows.map(r => r.updated_at ? r.updated_at.slice(0, 10) : "").filter(Boolean);
-  const studyAuditDays = auditStudyRows.map(r => r.day).filter(Boolean);
   const checklistDays = checklistRows.map(r => r.day).filter(Boolean);
 
-  // ONLY actual study days count toward the streak. Visits/logins do not artificially inflate it.
-  const allStudyDays = Array.from(new Set([...progressDays, ...studyAuditDays, ...checklistDays]));
+  // ONLY actual study days count toward the streak. Visits, logins, or manual overrides cannot inflate it.
+  const allStudyDays = Array.from(new Set([...progressDays, ...checklistDays]));
   const streak = calculateStreak(allStudyDays, today);
   const topicsDoneToday = doneRows.filter(r => r.updated_at && r.updated_at.slice(0, 10) === today).length;
-  const widgetToken = createWidgetToken(u.id);
 
   return c.json({
     done: doneRows.map(r => r.item_id),
     streak,
     today_done: streak.todayDone,
-    topics_done_today: topicsDoneToday,
-    widget_token: widgetToken
+    topics_done_today: topicsDoneToday
   });
 });
 
@@ -221,113 +213,16 @@ app.post("/progress", async c => {
 
   // Recalculate streak immediately after progress update
   const today = new Date().toISOString().slice(0, 10);
-  const [doneRows, auditStudyRows, checklistRows] = await Promise.all([
+  const [doneRows, checklistRows] = await Promise.all([
     db.all("SELECT item_id, updated_at FROM rp_progress WHERE user_id = ?", [u.id]),
-    db.all("SELECT substr(created_at, 1, 10) as day FROM rp_audit WHERE user_id = ? AND action IN ('study.progress', 'study.session', 'study.checklist')", [u.id]),
     db.all("SELECT substr(updated_at, 1, 10) as day FROM rp_job_checklists WHERE user_id = ?", [u.id])
   ]);
   const progressDays = doneRows.map(r => r.updated_at ? r.updated_at.slice(0, 10) : "").filter(Boolean);
-  const studyAuditDays = auditStudyRows.map(r => r.day).filter(Boolean);
   const checklistDays = checklistRows.map(r => r.day).filter(Boolean);
-  const allStudyDays = Array.from(new Set([...progressDays, ...studyAuditDays, ...checklistDays]));
+  const allStudyDays = Array.from(new Set([...progressDays, ...checklistDays]));
   const streak = calculateStreak(allStudyDays, today);
 
   return c.json({ ok: true, streak });
-});
-
-// Explicit study session logger (e.g. from Reader, daily widget check, or notes view)
-app.post("/study/session", async c => {
-  const u = auth(c), b = await body(c);
-  const topicId = str(b.topic_id || "general_study", 200);
-  const note = str(b.note || "Daily study completed", 250);
-  await db.run(
-    "INSERT INTO rp_audit (user_id, action, detail, ip, created_at) VALUES (?, 'study.session', ?, ?, datetime('now'))",
-    [u.id, `${topicId}: ${note}`, clientIp(c)]
-  );
-  if (b.mark_progress && b.item_id) {
-    await db.run(
-      "INSERT INTO rp_progress (user_id, item_id, updated_at) VALUES (?, ?, datetime('now')) " +
-      "ON CONFLICT(user_id, item_id) DO UPDATE SET updated_at = datetime('now')",
-      [u.id, str(b.item_id, 220)]
-    );
-  }
-  return c.json({ ok: true, message: "Study session logged successfully" });
-});
-
-/* ---------------- Android Phone & External Widget API ---------------- */
-app.get("/widget/streak", async c => {
-  let user = null;
-  const token = c.req.query("token");
-  if (token) {
-    const userId = verifyWidgetToken(token);
-    if (userId) {
-      user = await db.first("SELECT id, name, email, career_roles FROM rp_users WHERE id = ? AND status = 'active'", [userId]);
-    }
-  }
-  if (!user) {
-    try { user = auth(c); } catch {}
-  }
-  if (!user) {
-    return c.json({
-      ok: false,
-      error: "Authentication required. Log in or provide a valid widget token.",
-      streak: 0,
-      today_done: false,
-      status: "unauthorized"
-    }, 401);
-  }
-
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const [doneRows, auditStudyRows, checklistRows] = await Promise.all([
-    db.all("SELECT item_id, updated_at FROM rp_progress WHERE user_id = ?", [user.id]),
-    db.all("SELECT substr(created_at, 1, 10) as day FROM rp_audit WHERE user_id = ? AND action IN ('study.progress', 'study.session', 'study.checklist')", [user.id]),
-    db.all("SELECT substr(updated_at, 1, 10) as day FROM rp_job_checklists WHERE user_id = ?", [user.id])
-  ]);
-
-  const progressDays = doneRows.map(r => r.updated_at ? r.updated_at.slice(0, 10) : "").filter(Boolean);
-  const auditDays = auditStudyRows.map(r => r.day).filter(Boolean);
-  const checklistDays = checklistRows.map(r => r.day).filter(Boolean);
-  const allStudyDays = Array.from(new Set([...progressDays, ...auditDays, ...checklistDays]));
-
-  const streak = calculateStreak(allStudyDays, todayStr);
-  const topicsDoneToday = doneRows.filter(r => r.updated_at && r.updated_at.slice(0, 10) === todayStr).length;
-
-  return c.json({
-    ok: true,
-    user_id: user.id,
-    user_name: user.name ? user.name.split(" ")[0] : "Student",
-    streak: streak.current,
-    longest: streak.longest,
-    today_done: streak.todayDone,
-    topics_done_today: topicsDoneToday,
-    status: streak.status,
-    week: streak.week,
-    message: streak.message,
-    total_topics_done: doneRows.length,
-    timestamp: new Date().toISOString()
-  });
-});
-
-app.post("/widget/quick-done", async c => {
-  let user = null;
-  const token = c.req.query("token") || (await body(c)).token;
-  if (token) {
-    const userId = verifyWidgetToken(token);
-    if (userId) {
-      user = await db.first("SELECT id, name, email FROM rp_users WHERE id = ? AND status = 'active'", [userId]);
-    }
-  }
-  if (!user) {
-    try { user = auth(c); } catch {}
-  }
-  if (!user) fail(401, "Unauthorized");
-
-  await db.run(
-    "INSERT INTO rp_audit (user_id, action, detail, ip, created_at) VALUES (?, 'study.session', 'Quick Study logged via Android Widget', ?, datetime('now'))",
-    [user.id, clientIp(c)]
-  );
-
-  return c.json({ ok: true, message: "Today marked as studied!" });
 });
 
 /* ---------------- Documents and the protected viewer ---------------- */

@@ -94,13 +94,11 @@ export function StreakDashboardCard({
   streak,
   todayDone,
   topicsDoneToday,
-  widgetToken,
   onOpenModal,
 }: {
   streak: StreakData | null;
   todayDone: boolean;
   topicsDoneToday: number;
-  widgetToken?: string;
   onOpenModal: () => void;
 }) {
   const current = streak?.current || 0;
@@ -161,7 +159,7 @@ export function StreakDashboardCard({
             className="btn sm primary"
             onClick={onOpenModal}
           >
-            <span>Android Phone Widget & Reminders</span>
+            <span>Streak Details & Reminders</span>
           </button>
         </div>
       </div>
@@ -173,20 +171,17 @@ export function StreakModal({
   streak,
   todayDone,
   topicsDoneToday,
-  widgetToken,
   onClose,
   onRefresh,
 }: {
   streak: StreakData | null;
   todayDone: boolean;
   topicsDoneToday: number;
-  widgetToken?: string;
   onClose: () => void;
   onRefresh: () => void;
 }) {
   const current = streak?.current || 0;
   const longest = streak?.longest || 0;
-  const [copied, setCopied] = useState(false);
   const [reminderTime, setReminderTime] = useState(
     localStorage.getItem("rp_streak_reminder_time") || "20:00"
   );
@@ -198,7 +193,6 @@ export function StreakModal({
     (window as any).__pwaInstallPrompt || null
   );
   const [installStatus, setInstallStatus] = useState<string>("");
-  const [quickDoneBusy, setQuickDoneBusy] = useState(false);
 
   useEffect(() => {
     if ((window as any).__pwaInstallPrompt) {
@@ -222,14 +216,6 @@ export function StreakModal({
     };
   }, []);
 
-  const widgetUrl = `${window.location.origin}/widget?token=${widgetToken || ""}`;
-
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(widgetUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2500);
-  };
-
   const handleToggleReminder = async () => {
     if (!reminderActive) {
       const ok = await scheduleAndroidReminder(reminderTime);
@@ -244,18 +230,6 @@ export function StreakModal({
     setTestingNotification(true);
     await scheduleAndroidReminder(reminderTime);
     setTimeout(() => setTestingNotification(false), 1500);
-  };
-
-  const handleQuickMarkDone = async () => {
-    setQuickDoneBusy(true);
-    try {
-      await api("/widget/quick-done", "POST", { token: widgetToken });
-      await onRefresh();
-    } catch (e: any) {
-      alert(e.message || "Could not log study session");
-    } finally {
-      setQuickDoneBusy(false);
-    }
   };
 
   const handleInstallApp = async () => {
@@ -290,8 +264,8 @@ export function StreakModal({
           <div className="row" style={{ alignItems: "center", gap: 10 }}>
             <span style={{ fontSize: 24 }}>🔥</span>
             <div>
-              <h2 style={{ margin: 0, fontSize: 18 }}>Daily Study Streak & Android Widget</h2>
-              <div className="small muted">Updates daily · Resets to 0 if not completed</div>
+              <h2 style={{ margin: 0, fontSize: 18 }}>Daily Study Streak</h2>
+              <div className="small muted">Updates daily with completed topics · Resets to 0 if not completed</div>
             </div>
           </div>
           <button className="btn sm" onClick={onClose} aria-label="Close dialog">✕</button>
@@ -330,27 +304,19 @@ export function StreakModal({
               )}
             </div>
 
-            {!todayDone && (
-              <button
-                type="button"
-                className="btn primary full"
-                onClick={handleQuickMarkDone}
-                disabled={quickDoneBusy}
-                style={{ marginTop: 12 }}
-              >
-                {quickDoneBusy ? "Saving..." : "⚡ Quick Action: Mark 1 Topic Studied for Today"}
-              </button>
-            )}
+            <div className="small muted" style={{ marginTop: 12, textAlign: "center", lineHeight: 1.5, background: "#f8f9fa", padding: "10px 14px", borderRadius: 8, border: "1px solid #e9ecef" }}>
+              <strong>Authentic Study Rule:</strong> Streak increases automatically only when you check off completed topics in your curriculum track sheet or JD checklists. Manual check-ins are disabled.
+            </div>
           </div>
 
-          {/* Section: Android Phone Widget & Reminders */}
+          {/* Section: Daily Study Reminders & App */}
           <div className="streak-section-box">
             <div className="section-title-row">
               <span className="section-icon" aria-hidden="true">⚙</span>
-              <h3 style={{ margin: 0, fontSize: 16 }}>Android Phone Linked Widget & Reminders</h3>
+              <h3 style={{ margin: 0, fontSize: 16 }}>Study Streak Reminders & App</h3>
             </div>
             <p className="small muted" style={{ marginTop: 4, marginBottom: 14 }}>
-              Link your logged-in account to your Android phone home screen for live streak updates and daily study reminders.
+              Set daily reminder alerts and add the app to your phone home screen to keep your streak alive.
             </p>
 
             {/* Feature 1: Daily Reminder Notification */}
@@ -394,49 +360,11 @@ export function StreakModal({
               )}
             </div>
 
-            {/* Feature 2: Dedicated Home Screen Widget */}
+            {/* Feature 2: PWA App Badging & Installation */}
             <div className="android-feature-card" style={{ marginTop: 12 }}>
               <div className="feature-header">
                 <div>
-                  <strong>2. Android Home Screen Live Widget</strong>
-                  <div className="small muted">Embed a live streak widget card directly on your phone home screen.</div>
-                </div>
-                <Link to={`/widget?token=${widgetToken || ""}`} target="_blank" className="btn sm">
-                  Preview Widget
-                </Link>
-              </div>
-
-              <div className="widget-link-copy-box" style={{ marginTop: 10 }}>
-                <input
-                  type="text"
-                  readOnly
-                  value={widgetUrl}
-                  className="widget-url-input"
-                />
-                <button
-                  type="button"
-                  className="btn sm primary"
-                  onClick={handleCopyLink}
-                >
-                  {copied ? "Copied!" : "Copy Link"}
-                </button>
-              </div>
-
-              <div className="instructions-steps small muted" style={{ marginTop: 8 }}>
-                <strong>How to add to Android Home Screen:</strong>
-                <ol style={{ margin: "4px 0 0 16px", padding: 0 }}>
-                  <li>Open the copied link in Chrome on your Android phone.</li>
-                  <li>Tap the 3 dots menu (⋮) in Chrome &gt; select <strong>Add to Home screen</strong>.</li>
-                  <li>Or paste the URL into any Android Widget app (such as <em>Web Widget</em> or <em>HTTP Widget</em>).</li>
-                </ol>
-              </div>
-            </div>
-
-            {/* Feature 3: PWA App Badging & Installation */}
-            <div className="android-feature-card" style={{ marginTop: 12 }}>
-              <div className="feature-header">
-                <div>
-                  <strong>3. Install App to Android Home Screen</strong>
+                  <strong>2. Install App to Android Home Screen</strong>
                   <div className="small muted">
                     Adds the app to your phone home screen with live streak badges and fast 1-tap access.
                   </div>

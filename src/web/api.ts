@@ -27,5 +27,4 @@ export type ProgressResponse = {
   streak: StreakData;
   today_done: boolean;
   topics_done_today: number;
-  widget_token: string;
 };

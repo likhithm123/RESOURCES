@@ -17,12 +17,11 @@ const pct = (d: number, n: number) => (n ? Math.round((100 * d) / n) : 0);
 const Bar = ({ d, n }: { d: number; n: number }) => <><div className="bar" aria-hidden><i style={{ width: pct(d, n) + "%" }} /></div><span className="pct">{pct(d, n)}%</span></>;
 
 export default function Track() {
-  const { user, refresh, streak: ctxStreak, setStreak: setCtxStreak, todayDone: ctxTodayDone, setTodayDone: setCtxTodayDone, topicsDoneToday: ctxTopicsDoneToday, setTopicsDoneToday: setCtxTopicsDoneToday, widgetToken: ctxWidgetToken, refreshStreak } = useAuth();
+  const { user, refresh, streak: ctxStreak, setStreak: setCtxStreak, todayDone: ctxTodayDone, setTodayDone: setCtxTodayDone, topicsDoneToday: ctxTopicsDoneToday, setTopicsDoneToday: setCtxTopicsDoneToday, refreshStreak } = useAuth();
   const [done, setDone] = useState<Set<string>>(new Set());
   const [streak, setStreak] = useState<StreakData | null>(ctxStreak || null);
   const [todayDone, setTodayDone] = useState<boolean>(ctxTodayDone || false);
   const [topicsDoneToday, setTopicsDoneToday] = useState<number>(ctxTopicsDoneToday || 0);
-  const [widgetToken, setWidgetToken] = useState<string>(ctxWidgetToken || "");
   const [showStreakModal, setShowStreakModal] = useState(false);
   const [docs, setDocs] = useState<Record<string, Doc>>({});
   const [open, setOpen] = useState<Set<string>>(new Set());
@@ -45,9 +44,6 @@ export default function Track() {
         if (typeof r.topics_done_today === "number") {
           setTopicsDoneToday(r.topics_done_today);
           if (setCtxTopicsDoneToday) setCtxTopicsDoneToday(r.topics_done_today);
-        }
-        if (r.widget_token) {
-          setWidgetToken(r.widget_token);
         }
       } catch (e: any) {
         setErr(e.message);
@@ -100,9 +96,6 @@ export default function Track() {
       if (typeof res.topics_done_today === "number") {
         setTopicsDoneToday(res.topics_done_today);
         if (setCtxTopicsDoneToday) setCtxTopicsDoneToday(res.topics_done_today);
-      }
-      if (res.widget_token) {
-        setWidgetToken(res.widget_token);
       }
     } catch (e: any) { setErr(e.message); }
   }
@@ -157,7 +150,6 @@ export default function Track() {
         streak={streak}
         todayDone={todayDone}
         topicsDoneToday={topicsDoneToday}
-        widgetToken={widgetToken}
         onOpenModal={() => setShowStreakModal(true)}
       />
     )}
@@ -298,7 +290,6 @@ export default function Track() {
         streak={streak}
         todayDone={todayDone}
         topicsDoneToday={topicsDoneToday}
-        widgetToken={widgetToken}
         onClose={() => setShowStreakModal(false)}
         onRefresh={loadProgress}
       />

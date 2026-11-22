@@ -148,26 +148,6 @@ export function calculateStreak(dayStrings, refDateStr) {
   return { current, longest, todayDone, status, days: uniqueDays, week, message };
 }
 
-export function createWidgetToken(userId) {
-  const sig = hmacHex("sha256", secret(), "widget:" + userId);
-  return Buffer.from(`${userId}:${sig}`).toString("base64url");
-}
-
-export function verifyWidgetToken(token) {
-  try {
-    if (!token) return null;
-    const raw = Buffer.from(token, "base64url").toString("utf8");
-    const [idStr, sig] = raw.split(":");
-    if (!idStr || !sig) return null;
-    const expected = hmacHex("sha256", secret(), "widget:" + idStr);
-    if (safeEqual(sig, expected)) {
-      const num = Number(idStr);
-      return Number.isSafeInteger(num) ? num : idStr;
-    }
-  } catch {}
-  return null;
-}
-
 /* ---------------- Email (SMTP) ---------------- */
 let transport;
 const esc = s => String(s).replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));

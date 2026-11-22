@@ -7,7 +7,6 @@ import Reader from "./Reader";
 import Admin from "./Admin";
 import JDAnalyzer from "./JDAnalyzer";
 import Checklists from "./Checklists";
-import StreakWidgetView from "./StreakWidgetView";
 import { StreakNavPill, StreakModal, updateAndroidAppBadge } from "./StreakWidget";
 import { Library, Links, Connect, Certifications, Feedback, Legal } from "./Pages";
 
@@ -21,7 +20,6 @@ type AuthCtx = {
   setTodayDone: React.Dispatch<React.SetStateAction<boolean>>;
   topicsDoneToday: number;
   setTopicsDoneToday: React.Dispatch<React.SetStateAction<number>>;
-  widgetToken: string;
   refreshStreak: () => Promise<void>;
 };
 const Ctx = createContext<AuthCtx>(null as any);
@@ -289,7 +287,6 @@ export default function App() {
   const [streak, setStreak] = useState<StreakData | null>(null);
   const [todayDone, setTodayDone] = useState(false);
   const [topicsDoneToday, setTopicsDoneToday] = useState(0);
-  const [widgetToken, setWidgetToken] = useState("");
   const [showStreakModal, setShowStreakModal] = useState(false);
 
   const refresh = async () => { setUser((await api("/me")).user); };
@@ -302,7 +299,6 @@ export default function App() {
       }
       if (typeof res.today_done === "boolean") setTodayDone(res.today_done);
       if (typeof res.topics_done_today === "number") setTopicsDoneToday(res.topics_done_today);
-      if (res.widget_token) setWidgetToken(res.widget_token);
     } catch {}
   };
 
@@ -312,36 +308,31 @@ export default function App() {
   const nav = useNavigate();
   if (!ready) return <div className="wrap muted" style={{ textAlign: "center", padding: "80px 20px" }}>Loading...</div>;
 
-  // Unauthenticated: show only sign-in / sign-up page without navbar (or standalone widget view)
+  // Unauthenticated: show only sign-in / sign-up page without navbar
   if (!user) {
     return (
-      <Ctx.Provider value={{ user, setUser, refresh, streak: null, setStreak: () => {}, todayDone: false, setTodayDone: () => {}, topicsDoneToday: 0, setTopicsDoneToday: () => {}, widgetToken: "", refreshStreak: async () => {} }}>
-        <Routes>
-          <Route path="/widget" element={<StreakWidgetView />} />
-          <Route path="*" element={
-            <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", padding: "40px 16px", background: "var(--bg, #f4f6fb)", boxSizing: "border-box" }}>
-              <div style={{ textAlign: "center", marginBottom: 20 }}>
-                <h1 style={{ fontSize: 28, margin: "0 0 6px", color: "var(--ink, #0f172a)", letterSpacing: -0.5 }}>Resources Portal</h1>
-                <p className="muted small" style={{ margin: 0 }}>Computer Science, Tech Roles & Interview Preparation</p>
-              </div>
-              <main style={{ width: "100%", maxWidth: 500 }}>
-                <Routes>
-                  <Route path="/signup" element={<AuthPage mode="signup" />} />
-                  <Route path="/forgot" element={<AuthPage mode="forgot" />} />
-                  <Route path="/terms" element={<div className="card"><Legal type="terms" /><div style={{ marginTop: 16 }}><Link to="/signup" className="btn sm">Back to Sign up</Link></div></div>} />
-                  <Route path="/privacy" element={<div className="card"><Legal type="privacy" /><div style={{ marginTop: 16 }}><Link to="/signup" className="btn sm">Back to Sign up</Link></div></div>} />
-                  <Route path="*" element={<AuthPage mode="login" />} />
-                </Routes>
-              </main>
-              <div className="small muted" style={{ marginTop: 24, textAlign: "center", lineHeight: 1.6 }}>
-                <div style={{ marginBottom: 6 }}>
-                  <Link to="/terms" style={{ color: "var(--muted)" }}>Terms & Conditions</Link> · <Link to="/privacy" style={{ color: "var(--muted)" }}>Privacy Policy</Link>
-                </div>
-                Sign in or create an account to access all curriculum notes, track sheets, and interview prep.
-              </div>
+      <Ctx.Provider value={{ user, setUser, refresh, streak: null, setStreak: () => {}, todayDone: false, setTodayDone: () => {}, topicsDoneToday: 0, setTopicsDoneToday: () => {}, refreshStreak: async () => {} }}>
+        <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", padding: "40px 16px", background: "var(--bg, #f4f6fb)", boxSizing: "border-box" }}>
+          <div style={{ textAlign: "center", marginBottom: 20 }}>
+            <h1 style={{ fontSize: 28, margin: "0 0 6px", color: "var(--ink, #0f172a)", letterSpacing: -0.5 }}>Resources Portal</h1>
+            <p className="muted small" style={{ margin: 0 }}>Computer Science, Tech Roles & Interview Preparation</p>
+          </div>
+          <main style={{ width: "100%", maxWidth: 500 }}>
+            <Routes>
+              <Route path="/signup" element={<AuthPage mode="signup" />} />
+              <Route path="/forgot" element={<AuthPage mode="forgot" />} />
+              <Route path="/terms" element={<div className="card"><Legal type="terms" /><div style={{ marginTop: 16 }}><Link to="/signup" className="btn sm">Back to Sign up</Link></div></div>} />
+              <Route path="/privacy" element={<div className="card"><Legal type="privacy" /><div style={{ marginTop: 16 }}><Link to="/signup" className="btn sm">Back to Sign up</Link></div></div>} />
+              <Route path="*" element={<AuthPage mode="login" />} />
+            </Routes>
+          </main>
+          <div className="small muted" style={{ marginTop: 24, textAlign: "center", lineHeight: 1.6 }}>
+            <div style={{ marginBottom: 6 }}>
+              <Link to="/terms" style={{ color: "var(--muted)" }}>Terms & Conditions</Link> · <Link to="/privacy" style={{ color: "var(--muted)" }}>Privacy Policy</Link>
             </div>
-          } />
-        </Routes>
+            Sign in or create an account to access all curriculum notes, track sheets, and interview prep.
+          </div>
+        </div>
       </Ctx.Provider>
     );
   }
@@ -349,7 +340,7 @@ export default function App() {
   // Authenticated: full portal with navigation bar, track sheet home page, and all content unlocked
   const tab = ({ isActive }: { isActive: boolean }) => `tab ${isActive ? "active" : ""}`;
   return (
-    <Ctx.Provider value={{ user, setUser, refresh, streak, setStreak, todayDone, setTodayDone, topicsDoneToday, setTopicsDoneToday, widgetToken, refreshStreak }}>
+    <Ctx.Provider value={{ user, setUser, refresh, streak, setStreak, todayDone, setTodayDone, topicsDoneToday, setTopicsDoneToday, refreshStreak }}>
       <header className="nav">
         <div className="nav-in">
           <div className="nav-left">
@@ -395,7 +386,6 @@ export default function App() {
       </header>
       <Routes>
         <Route path="/read/:slug" element={<Reader />} />
-        <Route path="/widget" element={<StreakWidgetView />} />
         <Route path="*" element={
           <main className="wrap">
             <Routes>
@@ -425,7 +415,6 @@ export default function App() {
           streak={streak}
           todayDone={todayDone}
           topicsDoneToday={topicsDoneToday}
-          widgetToken={widgetToken}
           onClose={() => setShowStreakModal(false)}
           onRefresh={refreshStreak}
         />

@@ -14,6 +14,7 @@ export type ChecklistItem = {
   why: string;
   tufUrl?: string | null;
   leetcodeUrl?: string | null;
+  gfgUrl?: string | null;
   youtubeUrl?: string | null;
   duration?: string | null;
   completed: boolean;
@@ -315,6 +316,7 @@ export default function Checklists() {
       if (it.why) md += `  - Note: ${it.why}\n`;
       if (it.tufUrl) md += `  - Practice: ${it.tufUrl}\n`;
       if (it.leetcodeUrl) md += `  - LeetCode: ${it.leetcodeUrl}\n`;
+      if (it.gfgUrl) md += `  - GFG: ${it.gfgUrl}\n`;
     });
 
     const blob = new Blob([md], { type: "text/markdown;charset=utf-8;" });
@@ -660,6 +662,17 @@ export default function Checklists() {
                             className="reader-link-btn leetcode-link"
                           >
                             LeetCode ↗
+                          </a>
+                        )}
+                        {item.gfgUrl && (
+                          <a
+                            href={item.gfgUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="reader-link-btn gfg-link"
+                            style={{ background: "#ecfdf5", color: "#065f46", border: "1px solid #a7f3d0" }}
+                          >
+                            GFG ↗
                           </a>
                         )}
                         {item.youtubeUrl && (

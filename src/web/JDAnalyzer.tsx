@@ -14,6 +14,7 @@ export type ChecklistItem = {
   why: string;
   tufUrl?: string | null;
   leetcodeUrl?: string | null;
+  gfgUrl?: string | null;
   youtubeUrl?: string | null;
   duration?: string | null;
   completed: boolean;
@@ -943,6 +944,17 @@ export default function JDAnalyzer() {
                                 style={{ background: "#fffbeb", color: "#92400e" }}
                               >
                                 LeetCode ↗
+                              </a>
+                            )}
+                            {item.gfgUrl && (
+                              <a
+                                href={item.gfgUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="reader-link-btn"
+                                style={{ background: "#ecfdf5", color: "#065f46" }}
+                              >
+                                GFG ↗
                               </a>
                             )}
                             {item.youtubeUrl && (

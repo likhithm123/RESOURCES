@@ -55,6 +55,7 @@ const notebooks = {};
           ...(tuf?.type ? { tufType: tuf.type } : {}),
           ...(tuf?.slug ? { tufSlug: tuf.slug } : {}),
           ...(tuf?.leetcode ? { leetcodeUrl: tuf.leetcode } : {}),
+          ...(tuf?.gfg ? { gfgUrl: tuf.gfg } : {}),
           ...(tuf?.youtube ? { youtubeUrl: tuf.youtube } : {}),
           ...(tuf?.duration ? { duration: tuf.duration } : {}),
         });

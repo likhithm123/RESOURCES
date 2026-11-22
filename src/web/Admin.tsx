@@ -332,7 +332,8 @@ function Users() {
                                 <td><span className={`tag ${it.priority === "High" ? "err" : it.priority === "Medium" ? "" : "ok"}`} style={{ fontSize: 10 }}>{it.priority}</span></td>
                                 <td style={{ whiteSpace: "nowrap" }}>
                                   {it.tufUrl && <a href={it.tufUrl} target="_blank" rel="noopener noreferrer" className="small" style={{ marginRight: 6 }}>TUF ↗</a>}
-                                  {it.leetcodeUrl && <a href={it.leetcodeUrl} target="_blank" rel="noopener noreferrer" className="small">LeetCode ↗</a>}
+                                  {it.leetcodeUrl && <a href={it.leetcodeUrl} target="_blank" rel="noopener noreferrer" className="small" style={{ marginRight: 6 }}>LeetCode ↗</a>}
+                                  {it.gfgUrl && <a href={it.gfgUrl} target="_blank" rel="noopener noreferrer" className="small">GFG ↗</a>}
                                 </td>
                               </tr>
                             ))}
@@ -479,7 +480,8 @@ function JDChecklistsAdmin() {
                     <td><span className={`tag ${it.priority === "High" ? "err" : it.priority === "Medium" ? "" : "ok"}`} style={{ fontSize: 10 }}>{it.priority}</span></td>
                     <td style={{ whiteSpace: "nowrap" }}>
                       {it.tufUrl && <a href={it.tufUrl} target="_blank" rel="noopener noreferrer" className="small" style={{ marginRight: 6 }}>TUF ↗</a>}
-                      {it.leetcodeUrl && <a href={it.leetcodeUrl} target="_blank" rel="noopener noreferrer" className="small">LeetCode ↗</a>}
+                      {it.leetcodeUrl && <a href={it.leetcodeUrl} target="_blank" rel="noopener noreferrer" className="small" style={{ marginRight: 6 }}>LeetCode ↗</a>}
+                      {it.gfgUrl && <a href={it.gfgUrl} target="_blank" rel="noopener noreferrer" className="small">GFG ↗</a>}
                     </td>
                   </tr>
                 ))}

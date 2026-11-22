@@ -1728,13 +1728,8 @@
     "leetcode": "https://leetcode.com/problems/buildings-with-an-ocean-view/"
   },
   "leaders-in-an-array": {
-    "slug": "leaders-in-an-array",
-    "type": "practice",
-    "title": "Leaders in an Array",
-    "url": "https://takeuforward.org/practice/dsa/leaders-in-an-array",
-    "duration": "11 min",
-    "youtube": "https://youtu.be/cHrH9CQ8pmY",
-    "leetcode": "https://leetcode.com/problems/buildings-with-an-ocean-view/"
+    "url": "https://takeuforward.org/data-structure/leaders-in-an-array/",
+    "gfg": "https://www.geeksforgeeks.org/leaders-in-an-array/"
   },
   "11-dsa-a2z-solutions/arrays-faqs-medium/rearrange-array-elements-by-sign": {
     "slug": "rearrange-array-elements-by-sign",
@@ -5343,12 +5338,7 @@
     "leetcode": "https://leetcode.com/problems/online-stock-span/"
   },
   "stock-span-problem": {
-    "slug": "stock-span-problem",
-    "type": "practice",
-    "title": "Stock span problem",
-    "url": "https://takeuforward.org/practice/dsa/stock-span-problem",
-    "duration": "19 min",
-    "youtube": "https://youtu.be/eay-zoSRkVc?si=deNNe5i38BOAntha",
+    "url": "https://takeuforward.org/data-structure/stock-span-problem/",
     "leetcode": "https://leetcode.com/problems/online-stock-span/"
   },
   "11-dsa-a2z-solutions/stack-queues-faqs/celebrity-problem": {
@@ -7179,13 +7169,8 @@
     "leetcode": null
   },
   "bellman-ford-algorithm": {
-    "slug": "bellman-ford-algorithm",
-    "type": "practice",
-    "title": "Bellman ford algorithm",
-    "url": "https://takeuforward.org/practice/dsa/bellman-ford-algorithm",
-    "duration": "27 min",
-    "youtube": "https://youtu.be/0vVofAhAYjc",
-    "leetcode": null
+    "url": "https://takeuforward.org/data-structure/bellman-ford-algorithm-g-41/",
+    "gfg": "https://www.geeksforgeeks.org/bellman-ford-algorithm-dp-23/"
   },
   "11-dsa-a2z-solutions/graphs-shortest-path-algorithms/floyd-warshall-algorithm": {
     "slug": "floyd-warshall-algorithm",
@@ -7971,13 +7956,8 @@
     "leetcode": null
   },
   "rod-cutting-problem": {
-    "slug": "rod-cutting-problem",
-    "type": "practice",
-    "title": "Rod cutting problem",
-    "url": "https://takeuforward.org/practice/dsa/rod-cutting-problem",
-    "duration": "22 min",
-    "youtube": "https://youtu.be/mO8XpGoJwuo",
-    "leetcode": null
+    "url": "https://takeuforward.org/data-structure/rod-cutting-problem-dp-24/",
+    "gfg": "https://www.geeksforgeeks.org/cutting-a-rod-dp-13/"
   },
   "11-dsa-a2z-solutions/dynamic-programming-lis/longest-increasing-subsequence": {
     "slug": "longest-increasing-subsequence",
@@ -8061,13 +8041,8 @@
     "leetcode": null
   },
   "longest-bitonic-subsequence": {
-    "slug": "longest-bitonic-subsequence",
-    "type": "practice",
-    "title": "Longest Bitonic Subsequence",
-    "url": "https://takeuforward.org/practice/dsa/longest-bitonic-subsequence",
-    "duration": "13 min",
-    "youtube": "https://youtu.be/y4vN0WNdrlg",
-    "leetcode": null
+    "url": "https://takeuforward.org/data-structure/longest-bitonic-subsequence-dp-46/",
+    "gfg": "https://www.geeksforgeeks.org/longest-bitonic-subsequence-dp-15/"
   },
   "11-dsa-a2z-solutions/dynamic-programming-lis/number-of-longest-increasing-subsequences": {
     "slug": "number-of-longest-increasing-subsequences",
@@ -8133,12 +8108,7 @@
     "leetcode": "https://leetcode.com/problems/longest-palindromic-subsequence/"
   },
   "longest-palindromic-subsequence": {
-    "slug": "longest-palindromic-subsequence",
-    "type": "practice",
-    "title": "Longest palindromic subsequence",
-    "url": "https://takeuforward.org/practice/dsa/longest-palindromic-subsequence",
-    "duration": "9 min",
-    "youtube": "https://youtu.be/6i_T5kkfv4A",
+    "url": "https://takeuforward.org/data-structure/longest-palindromic-subsequence-dp-28/",
     "leetcode": "https://leetcode.com/problems/longest-palindromic-subsequence/"
   },
   "11-dsa-a2z-solutions/dynamic-programming-dp-on-strings/minimum-insertions-to-make-string-palindrome": {
@@ -8187,12 +8157,7 @@
     "leetcode": "https://leetcode.com/problems/shortest-common-supersequence/"
   },
   "shortest-common-supersequence": {
-    "slug": "shortest-common-supersequence",
-    "type": "practice",
-    "title": "Shortest common supersequence",
-    "url": "https://takeuforward.org/practice/dsa/shortest-common-supersequence",
-    "duration": "26 min",
-    "youtube": "https://youtu.be/xElxAuBcvsU",
+    "url": "https://takeuforward.org/data-structure/shortest-common-supersequence-dp-31/",
     "leetcode": "https://leetcode.com/problems/shortest-common-supersequence/"
   },
   "11-dsa-a2z-solutions/dynamic-programming-dp-on-strings/distinct-subsequences-count-ways-t-appears-in-s": {
@@ -8752,5 +8717,519 @@
     "type": "practice",
     "title": "Last Minute Practice Set (solve without looking)",
     "url": "https://takeuforward.org/practice/dsa/last-minute-practice-set"
+  },
+  "count-primes": {
+    "url": "https://takeuforward.org/data-structure/sieve-of-eratosthenes/",
+    "leetcode": "https://leetcode.com/problems/count-primes/"
+  },
+  "10-dsa-basics-data-structures/count-primes": {
+    "url": "https://takeuforward.org/data-structure/sieve-of-eratosthenes/",
+    "leetcode": "https://leetcode.com/problems/count-primes/"
+  },
+  "simple-sieve-of-eratosthenes": {
+    "url": "https://takeuforward.org/data-structure/sieve-of-eratosthenes/",
+    "leetcode": "https://leetcode.com/problems/count-primes/",
+    "gfg": "https://www.geeksforgeeks.org/sieve-of-eratosthenes/"
+  },
+  "10-dsa-basics-data-structures/simple-sieve-of-eratosthenes": {
+    "url": "https://takeuforward.org/data-structure/sieve-of-eratosthenes/",
+    "leetcode": "https://leetcode.com/problems/count-primes/",
+    "gfg": "https://www.geeksforgeeks.org/sieve-of-eratosthenes/"
+  },
+  "segmented-and-incremental-sieve": {
+    "gfg": "https://www.geeksforgeeks.org/segmented-sieve/"
+  },
+  "10-dsa-basics-data-structures/segmented-and-incremental-sieve": {
+    "gfg": "https://www.geeksforgeeks.org/segmented-sieve/"
+  },
+  "euler-s-totient-phi-algorithm": {
+    "gfg": "https://www.geeksforgeeks.org/eulers-totient-function/"
+  },
+  "10-dsa-basics-data-structures/euler-s-totient-phi-algorithm": {
+    "gfg": "https://www.geeksforgeeks.org/eulers-totient-function/"
+  },
+  "strobogrammatic-number": {
+    "leetcode": "https://leetcode.com/problems/strobogrammatic-number/"
+  },
+  "10-dsa-basics-data-structures/strobogrammatic-number": {
+    "leetcode": "https://leetcode.com/problems/strobogrammatic-number/"
+  },
+  "chinese-remainder-theorem": {
+    "gfg": "https://www.geeksforgeeks.org/chinese-remainder-theorem-set-1-introduction/"
+  },
+  "10-dsa-basics-data-structures/chinese-remainder-theorem": {
+    "gfg": "https://www.geeksforgeeks.org/chinese-remainder-theorem-set-1-introduction/"
+  },
+  "toggle-the-switch-bulb-switcher": {
+    "leetcode": "https://leetcode.com/problems/bulb-switcher/"
+  },
+  "10-dsa-basics-data-structures/toggle-the-switch-bulb-switcher": {
+    "leetcode": "https://leetcode.com/problems/bulb-switcher/"
+  },
+  "alice-apple-tree-minimum-perimeter": {
+    "leetcode": "https://leetcode.com/problems/minimum-garden-perimeter-to-collect-enough-apples/"
+  },
+  "10-dsa-basics-data-structures/alice-apple-tree-minimum-perimeter": {
+    "leetcode": "https://leetcode.com/problems/minimum-garden-perimeter-to-collect-enough-apples/"
+  },
+  "binary-palindrome-validation": {
+    "gfg": "https://www.geeksforgeeks.org/check-binary-representation-number-palindrome/"
+  },
+  "10-dsa-basics-data-structures/binary-palindrome-validation": {
+    "gfg": "https://www.geeksforgeeks.org/check-binary-representation-number-palindrome/"
+  },
+  "booth-s-multiplication-algorithm": {
+    "gfg": "https://www.geeksforgeeks.org/booths-multiplication-algorithm/"
+  },
+  "10-dsa-basics-data-structures/booth-s-multiplication-algorithm": {
+    "gfg": "https://www.geeksforgeeks.org/booths-multiplication-algorithm/"
+  },
+  "euclid-s-extended-euclidean-algorithm": {
+    "gfg": "https://www.geeksforgeeks.org/euclidean-algorithms-basic-and-extended/"
+  },
+  "10-dsa-basics-data-structures/euclid-s-extended-euclidean-algorithm": {
+    "gfg": "https://www.geeksforgeeks.org/euclidean-algorithms-basic-and-extended/"
+  },
+  "karatsuba-algorithm-for-fast-multiplication": {
+    "gfg": "https://www.geeksforgeeks.org/karatsuba-algorithm-for-fast-multiplication-using-divide-and-conquer-algorithm/"
+  },
+  "10-dsa-basics-data-structures/karatsuba-algorithm-for-fast-multiplication": {
+    "gfg": "https://www.geeksforgeeks.org/karatsuba-algorithm-for-fast-multiplication-using-divide-and-conquer-algorithm/"
+  },
+  "longest-sequence-of-1s-after-flipping-a-bit": {
+    "leetcode": "https://leetcode.com/problems/max-consecutive-ones-ii/"
+  },
+  "10-dsa-basics-data-structures/longest-sequence-of-1s-after-flipping-a-bit": {
+    "leetcode": "https://leetcode.com/problems/max-consecutive-ones-ii/"
+  },
+  "swap-two-nibbles-in-a-byte": {
+    "gfg": "https://www.geeksforgeeks.org/swap-two-nibbles-byte/"
+  },
+  "10-dsa-basics-data-structures/swap-two-nibbles-in-a-byte": {
+    "gfg": "https://www.geeksforgeeks.org/swap-two-nibbles-byte/"
+  },
+  "block-swap-algorithm-for-array-rotation": {
+    "gfg": "https://www.geeksforgeeks.org/block-swap-algorithm-for-array-rotation/"
+  },
+  "10-dsa-basics-data-structures/block-swap-algorithm-for-array-rotation": {
+    "gfg": "https://www.geeksforgeeks.org/block-swap-algorithm-for-array-rotation/"
+  },
+  "maximum-product-subarray": {
+    "url": "https://takeuforward.org/data-structure/maximum-product-subarray-in-an-array/",
+    "leetcode": "https://leetcode.com/problems/maximum-product-subarray/"
+  },
+  "10-dsa-basics-data-structures/maximum-product-subarray": {
+    "url": "https://takeuforward.org/data-structure/maximum-product-subarray-in-an-array/",
+    "leetcode": "https://leetcode.com/problems/maximum-product-subarray/"
+  },
+  "maximum-sum-of-hourglass-in-matrix": {
+    "leetcode": "https://leetcode.com/problems/maximum-sum-of-an-hourglass/"
+  },
+  "10-dsa-basics-data-structures/maximum-sum-of-hourglass-in-matrix": {
+    "leetcode": "https://leetcode.com/problems/maximum-sum-of-an-hourglass/"
+  },
+  "maximum-equilibrium-sum": {
+    "leetcode": "https://leetcode.com/problems/find-pivot-index/",
+    "gfg": "https://www.geeksforgeeks.org/equilibrium-index-of-an-array/"
+  },
+  "10-dsa-basics-data-structures/maximum-equilibrium-sum": {
+    "leetcode": "https://leetcode.com/problems/find-pivot-index/",
+    "gfg": "https://www.geeksforgeeks.org/equilibrium-index-of-an-array/"
+  },
+  "10-dsa-basics-data-structures/leaders-in-an-array": {
+    "url": "https://takeuforward.org/data-structure/leaders-in-an-array/",
+    "gfg": "https://www.geeksforgeeks.org/leaders-in-an-array/"
+  },
+  "majority-element-boyer-moore-voting": {
+    "url": "https://takeuforward.org/data-structure/find-the-majority-element-that-occurs-more-than-n-2-times/",
+    "leetcode": "https://leetcode.com/problems/majority-element/"
+  },
+  "10-dsa-basics-data-structures/majority-element-boyer-moore-voting": {
+    "url": "https://takeuforward.org/data-structure/find-the-majority-element-that-occurs-more-than-n-2-times/",
+    "leetcode": "https://leetcode.com/problems/majority-element/"
+  },
+  "lexicographically-first-palindromic-string": {
+    "gfg": "https://www.geeksforgeeks.org/lexicographically-first-palindromic-string/"
+  },
+  "10-dsa-basics-data-structures/lexicographically-first-palindromic-string": {
+    "gfg": "https://www.geeksforgeeks.org/lexicographically-first-palindromic-string/"
+  },
+  "natural-sort-order": {
+    "gfg": "https://www.geeksforgeeks.org/natural-sort-order/"
+  },
+  "10-dsa-basics-data-structures/natural-sort-order": {
+    "gfg": "https://www.geeksforgeeks.org/natural-sort-order/"
+  },
+  "move-hyphen-to-beginning": {
+    "gfg": "https://www.geeksforgeeks.org/move-spaces-front-string-single-traversal/"
+  },
+  "10-dsa-basics-data-structures/move-hyphen-to-beginning": {
+    "gfg": "https://www.geeksforgeeks.org/move-spaces-front-string-single-traversal/"
+  },
+  "manacher-s-algorithm": {
+    "url": "https://takeuforward.org/data-structure/longest-palindromic-substring/",
+    "leetcode": "https://leetcode.com/problems/longest-palindromic-substring/",
+    "gfg": "https://www.geeksforgeeks.org/manachers-algorithm-linear-time-longest-palindromic-substring-part-1/"
+  },
+  "10-dsa-basics-data-structures/manacher-s-algorithm": {
+    "url": "https://takeuforward.org/data-structure/longest-palindromic-substring/",
+    "leetcode": "https://leetcode.com/problems/longest-palindromic-substring/",
+    "gfg": "https://www.geeksforgeeks.org/manachers-algorithm-linear-time-longest-palindromic-substring-part-1/"
+  },
+  "sorted-unique-permutations": {
+    "leetcode": "https://leetcode.com/problems/permutations-ii/"
+  },
+  "10-dsa-basics-data-structures/sorted-unique-permutations": {
+    "leetcode": "https://leetcode.com/problems/permutations-ii/"
+  },
+  "maneuvering-count-all-paths-in-grid": {
+    "leetcode": "https://leetcode.com/problems/unique-paths/"
+  },
+  "10-dsa-basics-data-structures/maneuvering-count-all-paths-in-grid": {
+    "leetcode": "https://leetcode.com/problems/unique-paths/"
+  },
+  "combinations-combination-sum": {
+    "url": "https://takeuforward.org/data-structure/combination-sum-1/",
+    "leetcode": "https://leetcode.com/problems/combination-sum/"
+  },
+  "10-dsa-basics-data-structures/combinations-combination-sum": {
+    "url": "https://takeuforward.org/data-structure/combination-sum-1/",
+    "leetcode": "https://leetcode.com/problems/combination-sum/"
+  },
+  "josephus-trap-problem": {
+    "leetcode": "https://leetcode.com/problems/find-the-winner-of-the-circular-game/",
+    "gfg": "https://www.geeksforgeeks.org/josephus-problem/"
+  },
+  "10-dsa-basics-data-structures/josephus-trap-problem": {
+    "leetcode": "https://leetcode.com/problems/find-the-winner-of-the-circular-game/",
+    "gfg": "https://www.geeksforgeeks.org/josephus-problem/"
+  },
+  "rat-in-a-maze-solving": {
+    "url": "https://takeuforward.org/data-structure/rat-in-a-maze/",
+    "gfg": "https://www.geeksforgeeks.org/rat-in-a-maze-backtracking-2/"
+  },
+  "10-dsa-basics-data-structures/rat-in-a-maze-solving": {
+    "url": "https://takeuforward.org/data-structure/rat-in-a-maze/",
+    "gfg": "https://www.geeksforgeeks.org/rat-in-a-maze-backtracking-2/"
+  },
+  "n-queens-problem": {
+    "url": "https://takeuforward.org/data-structure/n-queen-problem-return-all-distinct-solutions-to-the-n-queens-puzzle/",
+    "leetcode": "https://leetcode.com/problems/n-queens/"
+  },
+  "10-dsa-basics-data-structures/n-queens-problem": {
+    "url": "https://takeuforward.org/data-structure/n-queen-problem-return-all-distinct-solutions-to-the-n-queens-puzzle/",
+    "leetcode": "https://leetcode.com/problems/n-queens/"
+  },
+  "warnsdorff-s-algorithm-for-knight-s-tour": {
+    "gfg": "https://www.geeksforgeeks.org/warnsdorffs-algorithm-knights-tour-problem/"
+  },
+  "10-dsa-basics-data-structures/warnsdorff-s-algorithm-for-knight-s-tour": {
+    "gfg": "https://www.geeksforgeeks.org/warnsdorffs-algorithm-knights-tour-problem/"
+  },
+  "hamiltonian-cycle-problem": {
+    "gfg": "https://www.geeksforgeeks.org/hamiltonian-cycle/"
+  },
+  "10-dsa-basics-data-structures/hamiltonian-cycle-problem": {
+    "gfg": "https://www.geeksforgeeks.org/hamiltonian-cycle/"
+  },
+  "kruskal-s-minimum-spanning-tree-algorithm": {
+    "url": "https://takeuforward.org/data-structure/kruskals-algorithm-minimum-spanning-tree-g-47/",
+    "leetcode": "https://leetcode.com/problems/min-cost-to-connect-all-points/"
+  },
+  "10-dsa-basics-data-structures/kruskal-s-minimum-spanning-tree-algorithm": {
+    "url": "https://takeuforward.org/data-structure/kruskals-algorithm-minimum-spanning-tree-g-47/",
+    "leetcode": "https://leetcode.com/problems/min-cost-to-connect-all-points/"
+  },
+  "activity-selection-problem": {
+    "leetcode": "https://leetcode.com/problems/non-overlapping-intervals/",
+    "gfg": "https://www.geeksforgeeks.org/activity-selection-problem-greedy-algo-1/"
+  },
+  "10-dsa-basics-data-structures/activity-selection-problem": {
+    "leetcode": "https://leetcode.com/problems/non-overlapping-intervals/",
+    "gfg": "https://www.geeksforgeeks.org/activity-selection-problem-greedy-algo-1/"
+  },
+  "graph-coloring-problem": {
+    "gfg": "https://www.geeksforgeeks.org/graph-coloring-set-2-greedy-algorithm/"
+  },
+  "10-dsa-basics-data-structures/graph-coloring-problem": {
+    "gfg": "https://www.geeksforgeeks.org/graph-coloring-set-2-greedy-algorithm/"
+  },
+  "huffman-coding-data-compression": {
+    "gfg": "https://www.geeksforgeeks.org/huffman-coding-greedy-algo-3/"
+  },
+  "10-dsa-basics-data-structures/huffman-coding-data-compression": {
+    "gfg": "https://www.geeksforgeeks.org/huffman-coding-greedy-algo-3/"
+  },
+  "loop-detection-and-removal-floyd-s-algorithm": {
+    "url": "https://takeuforward.org/data-structure/detect-a-cycle-in-a-linked-list/",
+    "leetcode": "https://leetcode.com/problems/linked-list-cycle-ii/"
+  },
+  "10-dsa-basics-data-structures/loop-detection-and-removal-floyd-s-algorithm": {
+    "url": "https://takeuforward.org/data-structure/detect-a-cycle-in-a-linked-list/",
+    "leetcode": "https://leetcode.com/problems/linked-list-cycle-ii/"
+  },
+  "sort-the-bitonic-doubly-linked-list": {
+    "gfg": "https://www.geeksforgeeks.org/sort-biotonic-doubly-linked-list/"
+  },
+  "10-dsa-basics-data-structures/sort-the-bitonic-doubly-linked-list": {
+    "gfg": "https://www.geeksforgeeks.org/sort-biotonic-doubly-linked-list/"
+  },
+  "segregate-even-and-odd-nodes-in-linked-list": {
+    "url": "https://takeuforward.org/data-structure/segregate-even-and-odd-nodes-in-linked-list/",
+    "leetcode": "https://leetcode.com/problems/odd-even-linked-list/"
+  },
+  "10-dsa-basics-data-structures/segregate-even-and-odd-nodes-in-linked-list": {
+    "url": "https://takeuforward.org/data-structure/segregate-even-and-odd-nodes-in-linked-list/",
+    "leetcode": "https://leetcode.com/problems/odd-even-linked-list/"
+  },
+  "merge-sort-for-doubly-linked-list": {
+    "leetcode": "https://leetcode.com/problems/sort-list/",
+    "gfg": "https://www.geeksforgeeks.org/merge-sort-for-doubly-linked-list/"
+  },
+  "10-dsa-basics-data-structures/merge-sort-for-doubly-linked-list": {
+    "leetcode": "https://leetcode.com/problems/sort-list/",
+    "gfg": "https://www.geeksforgeeks.org/merge-sort-for-doubly-linked-list/"
+  },
+  "minimum-stack-in-o-1-extra-space": {
+    "url": "https://takeuforward.org/data-structure/implement-min-stack-o2n-and-on-space-complexity/",
+    "leetcode": "https://leetcode.com/problems/min-stack/"
+  },
+  "10-dsa-basics-data-structures/minimum-stack-in-o-1-extra-space": {
+    "url": "https://takeuforward.org/data-structure/implement-min-stack-o2n-and-on-space-complexity/",
+    "leetcode": "https://leetcode.com/problems/min-stack/"
+  },
+  "the-celebrity-problem": {
+    "gfg": "https://www.geeksforgeeks.org/the-celebrity-problem/",
+    "leetcode": "https://leetcode.com/problems/find-the-celebrity/"
+  },
+  "10-dsa-basics-data-structures/the-celebrity-problem": {
+    "gfg": "https://www.geeksforgeeks.org/the-celebrity-problem/",
+    "leetcode": "https://leetcode.com/problems/find-the-celebrity/"
+  },
+  "iterative-tower-of-hanoi-using-stacks": {
+    "gfg": "https://www.geeksforgeeks.org/iterative-tower-of-hanoi/"
+  },
+  "10-dsa-basics-data-structures/iterative-tower-of-hanoi-using-stacks": {
+    "gfg": "https://www.geeksforgeeks.org/iterative-tower-of-hanoi/"
+  },
+  "10-dsa-basics-data-structures/stock-span-problem": {
+    "url": "https://takeuforward.org/data-structure/stock-span-problem/",
+    "leetcode": "https://leetcode.com/problems/online-stock-span/"
+  },
+  "priority-queue-using-doubly-linked-list": {
+    "gfg": "https://www.geeksforgeeks.org/priority-queue-using-doubly-linked-list/"
+  },
+  "10-dsa-basics-data-structures/priority-queue-using-doubly-linked-list": {
+    "gfg": "https://www.geeksforgeeks.org/priority-queue-using-doubly-linked-list/"
+  },
+  "sort-a-stack-without-extra-space-recursion": {
+    "gfg": "https://www.geeksforgeeks.org/sort-a-stack-using-recursion/"
+  },
+  "10-dsa-basics-data-structures/sort-a-stack-without-extra-space-recursion": {
+    "gfg": "https://www.geeksforgeeks.org/sort-a-stack-using-recursion/"
+  },
+  "maximum-sliding-window-monotonic-deque": {
+    "url": "https://takeuforward.org/data-structure/sliding-window-maximum/",
+    "leetcode": "https://leetcode.com/problems/sliding-window-maximum/"
+  },
+  "10-dsa-basics-data-structures/maximum-sliding-window-monotonic-deque": {
+    "url": "https://takeuforward.org/data-structure/sliding-window-maximum/",
+    "leetcode": "https://leetcode.com/problems/sliding-window-maximum/"
+  },
+  "stack-permutations-validation": {
+    "leetcode": "https://leetcode.com/problems/validate-stack-sequences/",
+    "gfg": "https://www.geeksforgeeks.org/stack-permutations-check-if-an-array-is-stack-permutation-of-other/"
+  },
+  "10-dsa-basics-data-structures/stack-permutations-validation": {
+    "leetcode": "https://leetcode.com/problems/validate-stack-sequences/",
+    "gfg": "https://www.geeksforgeeks.org/stack-permutations-check-if-an-array-is-stack-permutation-of-other/"
+  },
+  "recover-binary-search-tree": {
+    "url": "https://takeuforward.org/data-structure/recover-bst-correct-bst-with-two-nodes-swapped/",
+    "leetcode": "https://leetcode.com/problems/recover-binary-search-tree/"
+  },
+  "10-dsa-basics-data-structures/recover-binary-search-tree": {
+    "url": "https://takeuforward.org/data-structure/recover-bst-correct-bst-with-two-nodes-swapped/",
+    "leetcode": "https://leetcode.com/problems/recover-binary-search-tree/"
+  },
+  "tree-projections-left-right-top-bottom-views": {
+    "url": "https://takeuforward.org/data-structure/top-view-of-binary-tree/",
+    "gfg": "https://www.geeksforgeeks.org/print-left-view-binary-tree/"
+  },
+  "10-dsa-basics-data-structures/tree-projections-left-right-top-bottom-views": {
+    "url": "https://takeuforward.org/data-structure/top-view-of-binary-tree/",
+    "gfg": "https://www.geeksforgeeks.org/print-left-view-binary-tree/"
+  },
+  "vertical-order-traversal-of-binary-tree": {
+    "url": "https://takeuforward.org/data-structure/vertical-order-traversal-of-binary-tree/",
+    "leetcode": "https://leetcode.com/problems/vertical-order-traversal-of-a-binary-tree/"
+  },
+  "10-dsa-basics-data-structures/vertical-order-traversal-of-binary-tree": {
+    "url": "https://takeuforward.org/data-structure/vertical-order-traversal-of-binary-tree/",
+    "leetcode": "https://leetcode.com/problems/vertical-order-traversal-of-a-binary-tree/"
+  },
+  "boundary-traversal-of-binary-tree": {
+    "url": "https://takeuforward.org/data-structure/boundary-traversal-of-a-binary-tree/",
+    "gfg": "https://www.geeksforgeeks.org/boundary-traversal-of-binary-tree/"
+  },
+  "10-dsa-basics-data-structures/boundary-traversal-of-binary-tree": {
+    "url": "https://takeuforward.org/data-structure/boundary-traversal-of-a-binary-tree/",
+    "gfg": "https://www.geeksforgeeks.org/boundary-traversal-of-binary-tree/"
+  },
+  "breadth-first-search-bfs-shortest-path": {
+    "url": "https://takeuforward.org/graph/breadth-first-search-bfs-level-order-traversal/",
+    "leetcode": "https://leetcode.com/problems/shortest-path-in-binary-matrix/"
+  },
+  "10-dsa-basics-data-structures/breadth-first-search-bfs-shortest-path": {
+    "url": "https://takeuforward.org/graph/breadth-first-search-bfs-level-order-traversal/",
+    "leetcode": "https://leetcode.com/problems/shortest-path-in-binary-matrix/"
+  },
+  "depth-first-search-dfs-connected-components": {
+    "url": "https://takeuforward.org/data-structure/depth-first-search-dfs/"
+  },
+  "10-dsa-basics-data-structures/depth-first-search-dfs-connected-components": {
+    "url": "https://takeuforward.org/data-structure/depth-first-search-dfs/"
+  },
+  "dial-s-algorithm-0-1-small-weight-bfs": {
+    "gfg": "https://www.geeksforgeeks.org/dials-algorithm-optimized-dijkstra-for-small-range-weights/",
+    "leetcode": "https://leetcode.com/problems/minimum-cost-to-make-at-least-one-valid-path-in-a-grid/"
+  },
+  "10-dsa-basics-data-structures/dial-s-algorithm-0-1-small-weight-bfs": {
+    "gfg": "https://www.geeksforgeeks.org/dials-algorithm-optimized-dijkstra-for-small-range-weights/",
+    "leetcode": "https://leetcode.com/problems/minimum-cost-to-make-at-least-one-valid-path-in-a-grid/"
+  },
+  "10-dsa-basics-data-structures/bellman-ford-algorithm": {
+    "url": "https://takeuforward.org/data-structure/bellman-ford-algorithm-g-41/",
+    "gfg": "https://www.geeksforgeeks.org/bellman-ford-algorithm-dp-23/"
+  },
+  "topological-sort-kahn-s-algorithm-dfs": {
+    "url": "https://takeuforward.org/data-structure/topological-sort-bfs/",
+    "leetcode": "https://leetcode.com/problems/course-schedule-ii/"
+  },
+  "10-dsa-basics-data-structures/topological-sort-kahn-s-algorithm-dfs": {
+    "url": "https://takeuforward.org/data-structure/topological-sort-bfs/",
+    "leetcode": "https://leetcode.com/problems/course-schedule-ii/"
+  },
+  "heap-sort-algorithm": {
+    "gfg": "https://www.geeksforgeeks.org/heap-sort/"
+  },
+  "10-dsa-basics-data-structures/heap-sort-algorithm": {
+    "gfg": "https://www.geeksforgeeks.org/heap-sort/"
+  },
+  "binomial-heap-architecture": {
+    "gfg": "https://www.geeksforgeeks.org/binomial-heap-2/"
+  },
+  "10-dsa-basics-data-structures/binomial-heap-architecture": {
+    "gfg": "https://www.geeksforgeeks.org/binomial-heap-2/"
+  },
+  "k-ary-heap": {
+    "gfg": "https://www.geeksforgeeks.org/k-ary-heap/"
+  },
+  "10-dsa-basics-data-structures/k-ary-heap": {
+    "gfg": "https://www.geeksforgeeks.org/k-ary-heap/"
+  },
+  "winner-tree-tournament-tree": {
+    "gfg": "https://www.geeksforgeeks.org/tournament-tree-and-binary-heap/"
+  },
+  "10-dsa-basics-data-structures/winner-tree-tournament-tree": {
+    "gfg": "https://www.geeksforgeeks.org/tournament-tree-and-binary-heap/"
+  },
+  "hashmap-to-treemap-conversion-complexity": {
+    "gfg": "https://www.geeksforgeeks.org/how-to-convert-hashmap-to-treemap-in-java/"
+  },
+  "10-dsa-basics-data-structures/hashmap-to-treemap-conversion-complexity": {
+    "gfg": "https://www.geeksforgeeks.org/how-to-convert-hashmap-to-treemap-in-java/"
+  },
+  "types-of-sets-in-java": {
+    "gfg": "https://www.geeksforgeeks.org/set-in-java/"
+  },
+  "10-dsa-basics-data-structures/types-of-sets-in-java": {
+    "gfg": "https://www.geeksforgeeks.org/set-in-java/"
+  },
+  "distributing-items-with-frequency-constraints": {
+    "leetcode": "https://leetcode.com/problems/minimum-rounds-to-complete-all-tasks/"
+  },
+  "10-dsa-basics-data-structures/distributing-items-with-frequency-constraints": {
+    "leetcode": "https://leetcode.com/problems/minimum-rounds-to-complete-all-tasks/"
+  },
+  "longest-common-subsequence-lcs": {
+    "url": "https://takeuforward.org/data-structure/longest-common-subsequence-dp-25/",
+    "leetcode": "https://leetcode.com/problems/longest-common-subsequence/"
+  },
+  "10-dsa-basics-data-structures/longest-common-subsequence-lcs": {
+    "url": "https://takeuforward.org/data-structure/longest-common-subsequence-dp-25/",
+    "leetcode": "https://leetcode.com/problems/longest-common-subsequence/"
+  },
+  "longest-increasing-subsequence-lis": {
+    "url": "https://takeuforward.org/data-structure/longest-increasing-subsequence-dp-41/",
+    "leetcode": "https://leetcode.com/problems/longest-increasing-subsequence/"
+  },
+  "10-dsa-basics-data-structures/longest-increasing-subsequence-lis": {
+    "url": "https://takeuforward.org/data-structure/longest-increasing-subsequence-dp-41/",
+    "leetcode": "https://leetcode.com/problems/longest-increasing-subsequence/"
+  },
+  "10-dsa-basics-data-structures/longest-bitonic-subsequence": {
+    "url": "https://takeuforward.org/data-structure/longest-bitonic-subsequence-dp-46/",
+    "gfg": "https://www.geeksforgeeks.org/longest-bitonic-subsequence-dp-15/"
+  },
+  "10-dsa-basics-data-structures/longest-palindromic-subsequence": {
+    "url": "https://takeuforward.org/data-structure/longest-palindromic-subsequence-dp-28/",
+    "leetcode": "https://leetcode.com/problems/longest-palindromic-subsequence/"
+  },
+  "subset-sum-0-1-knapsack-problem": {
+    "url": "https://takeuforward.org/data-structure/subset-sum-equal-to-target-dp-14/",
+    "gfg": "https://www.geeksforgeeks.org/subset-sum-problem-dp-25/"
+  },
+  "10-dsa-basics-data-structures/subset-sum-0-1-knapsack-problem": {
+    "url": "https://takeuforward.org/data-structure/subset-sum-equal-to-target-dp-14/",
+    "gfg": "https://www.geeksforgeeks.org/subset-sum-problem-dp-25/"
+  },
+  "traveling-salesman-problem-bitmask-dp": {
+    "leetcode": "https://leetcode.com/problems/shortest-path-visiting-all-nodes/",
+    "gfg": "https://www.geeksforgeeks.org/travelling-salesman-problem-using-dynamic-programming/"
+  },
+  "10-dsa-basics-data-structures/traveling-salesman-problem-bitmask-dp": {
+    "leetcode": "https://leetcode.com/problems/shortest-path-visiting-all-nodes/",
+    "gfg": "https://www.geeksforgeeks.org/travelling-salesman-problem-using-dynamic-programming/"
+  },
+  "coin-change-problem": {
+    "url": "https://takeuforward.org/data-structure/coin-change-2-dp-22/",
+    "leetcode": "https://leetcode.com/problems/coin-change/"
+  },
+  "10-dsa-basics-data-structures/coin-change-problem": {
+    "url": "https://takeuforward.org/data-structure/coin-change-2-dp-22/",
+    "leetcode": "https://leetcode.com/problems/coin-change/"
+  },
+  "10-dsa-basics-data-structures/shortest-common-supersequence": {
+    "url": "https://takeuforward.org/data-structure/shortest-common-supersequence-dp-31/",
+    "leetcode": "https://leetcode.com/problems/shortest-common-supersequence/"
+  },
+  "levenshtein-distance-edit-distance": {
+    "url": "https://takeuforward.org/data-structure/edit-distance-dp-33/",
+    "leetcode": "https://leetcode.com/problems/edit-distance/"
+  },
+  "10-dsa-basics-data-structures/levenshtein-distance-edit-distance": {
+    "url": "https://takeuforward.org/data-structure/edit-distance-dp-33/",
+    "leetcode": "https://leetcode.com/problems/edit-distance/"
+  },
+  "10-dsa-basics-data-structures/rod-cutting-problem": {
+    "url": "https://takeuforward.org/data-structure/rod-cutting-problem-dp-24/",
+    "gfg": "https://www.geeksforgeeks.org/cutting-a-rod-dp-13/"
+  },
+  "wildcard-pattern-matching": {
+    "url": "https://takeuforward.org/data-structure/wildcard-matching-dp-34/",
+    "leetcode": "https://leetcode.com/problems/wildcard-matching/"
+  },
+  "10-dsa-basics-data-structures/wildcard-pattern-matching": {
+    "url": "https://takeuforward.org/data-structure/wildcard-matching-dp-34/",
+    "leetcode": "https://leetcode.com/problems/wildcard-matching/"
+  },
+  "pots-of-gold-game-predict-the-winner": {
+    "leetcode": "https://leetcode.com/problems/predict-the-winner/",
+    "gfg": "https://www.geeksforgeeks.org/optimal-strategy-for-a-game-dp-31/"
+  },
+  "10-dsa-basics-data-structures/pots-of-gold-game-predict-the-winner": {
+    "leetcode": "https://leetcode.com/problems/predict-the-winner/",
+    "gfg": "https://www.geeksforgeeks.org/optimal-strategy-for-a-game-dp-31/"
   }
 }

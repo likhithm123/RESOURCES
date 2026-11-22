@@ -71,7 +71,8 @@ for (const f of files) {
   // Raw PDFs are never uploaded: documents are served only as signed page images so they stay view-only.
 
   const h1 = execFileSync("python3", ["-c", "import sys,pymupdf;print(pymupdf.open(sys.argv[1])[0].get_text().split(chr(10))[0].strip())", path.join(pdfDir, f)]).toString().trim();
-  const title = h1 || slug;
+  const mdTitle = (() => { const dir = path.resolve("..", "long_notes", "content"); const first = fs.existsSync(dir) ? fs.readdirSync(dir).filter(x => x.startsWith(slug + ".")).sort((a, b) => a.localeCompare(b, "en", { numeric: true }))[0] : null; return first ? (fs.readFileSync(path.join(dir, first), "utf8").split("\n").find(l => l.startsWith("# ")) || "").slice(2).trim() : ""; })();
+  const title = mdTitle || h1 || slug;
   const description = `Comprehensive long-form edition (${pages} pages) with deeper topics, real-life analogies, code, traces and failure modes that go beyond the main notebook.`;
   const roles = JSON.stringify(["sde", "fullstack", "ai", "ml", "data", "devops"]);
   const order = 100 + (parseInt(slug.match(/^\d+/)?.[0] || "50", 10));

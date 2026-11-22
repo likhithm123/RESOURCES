@@ -48,13 +48,14 @@ export const NOTEBOOKS: Notebook[] = [
   { slug: "32-hr-interview-self-introduction", title: "HR Interview, Self Introduction and Behavioural Questions", roles: ALL },
   { slug: "33-forward-deployed-engineer", title: "Forward Deployed Engineer (FDE) Role Guide", roles: ["sde", "fullstack", "ai", "data", "devops"] },
   { slug: "34-network-engineering", title: "Network Engineering: OSI, Routing, Switching, BGP, Firewalls", roles: ["devops", "security", "sde", "fullstack"] },
-  { slug: "35-claude-anthropic-and-mcp", title: "Claude Architecture, Anthropic AI, MCP and Azure AI", roles: ["ai", "ml", "sde", "fullstack"] },
-  { slug: "36-php-and-modern-backend", title: "Modern PHP 8.x, Laravel and Web Architecture", roles: ["fullstack", "sde"] },
-  { slug: "37-top-tech-certifications-guide", title: "Valuable Tech Certifications Guide (Free & Paid)", roles: ALL },
-  { slug: "38-claude-101", title: "Claude 101: Anthropic AI & Prompt Engineering Masterclass", roles: ["ai", "ml", "sde", "fullstack"] },
+  { slug: "35-claude-anthropic-and-mcp", title: "Building with Claude: Anthropic API, Tool Use, Agents and MCP", roles: ["ai", "ml", "sde", "fullstack"] },
+  { slug: "36-php-and-modern-backend", title: "PHP and Modern Backend: From Basics to Laravel", roles: ["fullstack", "sde"] },
+  { slug: "37-top-tech-certifications-guide", title: "Top Tech Certifications: Which to Take and How to Prepare", roles: ALL },
+  { slug: "38-claude-101", title: "Claude 101: Using AI Assistants for Study, Work and Coding", roles: ["ai", "ml", "sde", "fullstack"] },
   { slug: "39-quantum-computing", title: "Quantum Computing: Qubits, Circuits & Algorithms", roles: ["ai", "ml", "sde", "security"] },
   { slug: "40-spring-boot-and-microservices", title: "Spring Boot & Microservices Enterprise Architecture", roles: ["sde", "fullstack"] },
   { slug: "41-go-programming-and-concurrency", title: "Go Programming & Concurrency Systems Architecture", roles: ["sde", "devops", "fullstack", "security"] },
+  { slug: "42-product-company-dsa-track", title: "Product Company DSA Track: Advanced Problems and Patterns", roles: ["sde", "fullstack"] },
 ];
 
 export const roleLabel = (id: string) => CAREER_ROLES.find(r => r.id === id)?.label || id;

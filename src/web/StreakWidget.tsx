@@ -194,16 +194,32 @@ export function StreakModal({
     localStorage.getItem("rp_streak_reminder_enabled") === "true"
   );
   const [testingNotification, setTestingNotification] = useState(false);
-  const [installPrompt, setInstallPrompt] = useState<any>(null);
+  const [installPrompt, setInstallPrompt] = useState<any>(
+    (window as any).__pwaInstallPrompt || null
+  );
+  const [installStatus, setInstallStatus] = useState<string>("");
   const [quickDoneBusy, setQuickDoneBusy] = useState(false);
 
   useEffect(() => {
+    if ((window as any).__pwaInstallPrompt) {
+      setInstallPrompt((window as any).__pwaInstallPrompt);
+    }
     const handler = (e: any) => {
       e.preventDefault();
+      (window as any).__pwaInstallPrompt = e;
       setInstallPrompt(e);
     };
+    const onReady = () => {
+      if ((window as any).__pwaInstallPrompt) {
+        setInstallPrompt((window as any).__pwaInstallPrompt);
+      }
+    };
     window.addEventListener("beforeinstallprompt", handler);
-    return () => window.removeEventListener("beforeinstallprompt", handler);
+    window.addEventListener("pwa-prompt-ready", onReady);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handler);
+      window.removeEventListener("pwa-prompt-ready", onReady);
+    };
   }, []);
 
   const widgetUrl = `${window.location.origin}/widget?token=${widgetToken || ""}`;
@@ -243,14 +259,27 @@ export function StreakModal({
   };
 
   const handleInstallApp = async () => {
-    if (installPrompt) {
-      installPrompt.prompt();
-      const choice = await installPrompt.userChoice;
-      if (choice.outcome === "accepted") {
-        setInstallPrompt(null);
+    const prompt = installPrompt || (window as any).__pwaInstallPrompt;
+    if (prompt) {
+      try {
+        await prompt.prompt();
+        const choice = await prompt.userChoice;
+        if (choice.outcome === "accepted") {
+          setInstallPrompt(null);
+          (window as any).__pwaInstallPrompt = null;
+          setInstallStatus("App successfully installed to home screen!");
+        }
+      } catch (err) {
+        console.error("Install prompt error:", err);
       }
     } else {
-      alert("To install on Android: Tap the three dots menu (⋮) in Chrome and select 'Add to Home screen' or 'Install app'.");
+      alert(
+        "If you do not see 'Add to Home screen' in Chrome:\n\n" +
+        "1. In modern Chrome, look for 'Install app' or 'Install Resources Portal' in the 3-dots menu (⋮).\n" +
+        "2. If it is already installed, the menu will show 'Open in app' instead.\n" +
+        "3. Chrome disables installation in Incognito / Private tabs.\n" +
+        "4. If opened inside WhatsApp or another app, tap 3 dots > 'Open in Chrome' first."
+      );
     }
   };
 
@@ -403,22 +432,38 @@ export function StreakModal({
               </div>
             </div>
 
-            {/* Feature 3: PWA App Badging */}
+            {/* Feature 3: PWA App Badging & Installation */}
             <div className="android-feature-card" style={{ marginTop: 12 }}>
               <div className="feature-header">
                 <div>
-                  <strong>3. App Icon Live Streak Badge</strong>
+                  <strong>3. Install App to Android Home Screen</strong>
                   <div className="small muted">
-                    Installing the PWA on Android displays your live streak count directly as a badge on the app icon.
+                    Adds the app to your phone home screen with live streak badges and fast 1-tap access.
                   </div>
                 </div>
                 <button
                   type="button"
-                  className="btn sm"
+                  className="btn sm primary"
                   onClick={handleInstallApp}
                 >
-                  Install App
+                  {installPrompt || (window as any).__pwaInstallPrompt ? "Install Now" : "Install App"}
                 </button>
+              </div>
+
+              {installStatus && (
+                <div className="small" style={{ color: "#2b8a3e", marginTop: 8, fontWeight: 600 }}>
+                  ✓ {installStatus}
+                </div>
+              )}
+
+              <div className="instructions-steps small muted" style={{ marginTop: 8 }}>
+                <strong>If you do not see the option in Chrome:</strong>
+                <ul style={{ margin: "4px 0 0 16px", padding: 0 }}>
+                  <li>Look for <strong>"Install app"</strong> instead of "Add to Home screen" in Chrome's 3-dots (⋮) menu.</li>
+                  <li>Ensure you are in a standard tab (Chrome disables installation in <strong>Incognito</strong> mode).</li>
+                  <li>If the app is already installed, Chrome shows <strong>"Open in app"</strong> instead.</li>
+                  <li>If you opened this inside WhatsApp/Gmail, tap 3 dots &gt; <strong>"Open in Chrome"</strong>.</li>
+                </ul>
               </div>
             </div>
           </div>

@@ -44,3 +44,14 @@ createRoot(document.getElementById("root")!).render(
     </BrowserRouter>
   </ErrorBoundary>
 );
+
+// Register service worker for Android PWA, offline badge sync, and daily reminder notifications
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker
+      .register("/sw.js")
+      .catch(err => {
+        console.warn("ServiceWorker registration failed:", err);
+      });
+  });
+}

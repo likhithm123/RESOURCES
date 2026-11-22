@@ -1,10 +1,11 @@
 // Track sheet: notebooks for the user's roles -> sections -> items with checkboxes.
 // Progress is saved per item; every item can open the notes at its exact page.
 import React, { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import { api, type Doc } from "./api";
+import { Link, useSearchParams } from "react-router-dom";
+import { api, type Doc, type StreakData } from "./api";
 import { useAuth, Msg } from "./App";
 import { NOTEBOOKS, CAREER_ROLES } from "../shared/catalog";
+import { StreakDashboardCard, StreakModal, updateAndroidAppBadge } from "./StreakWidget";
 import topicsJson from "../shared/topics.json";
 
 type Item = { id: string; title: string; page?: number; masterPage?: number; tufUrl?: string; tufType?: string; tufSlug?: string; leetcodeUrl?: string; gfgUrl?: string; youtubeUrl?: string; duration?: string };
@@ -16,24 +17,51 @@ const pct = (d: number, n: number) => (n ? Math.round((100 * d) / n) : 0);
 const Bar = ({ d, n }: { d: number; n: number }) => <><div className="bar" aria-hidden><i style={{ width: pct(d, n) + "%" }} /></div><span className="pct">{pct(d, n)}%</span></>;
 
 export default function Track() {
-  const { user, refresh } = useAuth();
+  const { user, refresh, streak: ctxStreak, setStreak: setCtxStreak, todayDone: ctxTodayDone, setTodayDone: setCtxTodayDone, topicsDoneToday: ctxTopicsDoneToday, setTopicsDoneToday: setCtxTopicsDoneToday, widgetToken: ctxWidgetToken, refreshStreak } = useAuth();
   const [done, setDone] = useState<Set<string>>(new Set());
-  const [streak, setStreak] = useState<{ current: number; longest: number; days: string[] }>({ current: 0, longest: 0, days: [] });
+  const [streak, setStreak] = useState<StreakData | null>(ctxStreak || null);
+  const [todayDone, setTodayDone] = useState<boolean>(ctxTodayDone || false);
+  const [topicsDoneToday, setTopicsDoneToday] = useState<number>(ctxTopicsDoneToday || 0);
+  const [widgetToken, setWidgetToken] = useState<string>(ctxWidgetToken || "");
+  const [showStreakModal, setShowStreakModal] = useState(false);
   const [docs, setDocs] = useState<Record<string, Doc>>({});
   const [open, setOpen] = useState<Set<string>>(new Set());
   const [q, setQ] = useState(""); const [hideDone, setHideDone] = useState(false); const [err, setErr] = useState(""); const [edit, setEdit] = useState(false);
-  useEffect(() => {
+
+  const loadProgress = async () => {
     if (user) {
-      api("/progress").then(r => {
+      try {
+        const r = await api("/progress");
         setDone(new Set(r.done));
-        if (r.streak) setStreak(r.streak);
-      }).catch(e => setErr(e.message));
+        if (r.streak) {
+          setStreak(r.streak);
+          if (setCtxStreak) setCtxStreak(r.streak);
+          updateAndroidAppBadge(r.streak.current);
+        }
+        if (typeof r.today_done === "boolean") {
+          setTodayDone(r.today_done);
+          if (setCtxTodayDone) setCtxTodayDone(r.today_done);
+        }
+        if (typeof r.topics_done_today === "number") {
+          setTopicsDoneToday(r.topics_done_today);
+          if (setCtxTopicsDoneToday) setCtxTopicsDoneToday(r.topics_done_today);
+        }
+        if (r.widget_token) {
+          setWidgetToken(r.widget_token);
+        }
+      } catch (e: any) {
+        setErr(e.message);
+      }
     } else {
       try {
         const saved = localStorage.getItem("rp_guest_done");
         if (saved) setDone(new Set(JSON.parse(saved)));
       } catch { }
     }
+  };
+
+  useEffect(() => {
+    loadProgress();
     api("/docs").then(r => setDocs(Object.fromEntries(r.docs.map((d: Doc) => [d.slug, d])))).catch(() => { });
   }, [user]);
 
@@ -58,7 +86,25 @@ export default function Track() {
       try { localStorage.setItem("rp_guest_done", JSON.stringify([...next])); } catch { }
       return;
     }
-    try { await api("/progress", "POST", { items: ids, done: value }); } catch (e: any) { setErr(e.message); }
+    try {
+      const res = await api("/progress", "POST", { items: ids, done: value });
+      if (res.streak) {
+        setStreak(res.streak);
+        if (setCtxStreak) setCtxStreak(res.streak);
+        updateAndroidAppBadge(res.streak.current);
+      }
+      if (typeof res.today_done === "boolean") {
+        setTodayDone(res.today_done);
+        if (setCtxTodayDone) setCtxTodayDone(res.today_done);
+      }
+      if (typeof res.topics_done_today === "number") {
+        setTopicsDoneToday(res.topics_done_today);
+        if (setCtxTopicsDoneToday) setCtxTopicsDoneToday(res.topics_done_today);
+      }
+      if (res.widget_token) {
+        setWidgetToken(res.widget_token);
+      }
+    } catch (e: any) { setErr(e.message); }
   }
   const flip = (id: string) => setOpen(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const all = mine.flatMap(nb => (TOPICS[nb.slug]?.sections || []).flatMap(s => s.items));
@@ -106,6 +152,15 @@ export default function Track() {
         </div>
       </div>
     )}
+    {user && (
+      <StreakDashboardCard
+        streak={streak}
+        todayDone={todayDone}
+        topicsDoneToday={topicsDoneToday}
+        widgetToken={widgetToken}
+        onOpenModal={() => setShowStreakModal(true)}
+      />
+    )}
     <div className="card">
       <div className="row"><div style={{ flex: 1, minWidth: 220 }}>
         <h1>Hi {user?.name ? user.name.split(" ")[0] : "Student"}, here is your track sheet</h1>
@@ -113,10 +168,10 @@ export default function Track() {
       </div>
         <div className="row" style={{ gap: 20 }}>
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 28, fontWeight: 700, color: streak.current > 0 ? "#e65100" : "var(--ink)" }}>
-              {streak.current}
+            <div style={{ fontSize: 28, fontWeight: 700, color: (streak?.current || 0) > 0 ? "#e65100" : "var(--ink)" }}>
+              {streak?.current || 0}
             </div>
-            <div className="small muted">day streak (best: {streak.longest})</div>
+            <div className="small muted">day streak (best: {streak?.longest || 0})</div>
           </div>
           <div style={{ textAlign: "right" }}>
             <div style={{ fontSize: 28, fontWeight: 700, color: "var(--ink)" }}>{pct(finished, total)}%</div>
@@ -238,5 +293,15 @@ export default function Track() {
       </div>;
     })}
     {!mine.length && <div className="card">No notebooks yet. <Link to="/plan">Choose your roles</Link>.</div>}
+    {showStreakModal && (
+      <StreakModal
+        streak={streak}
+        todayDone={todayDone}
+        topicsDoneToday={topicsDoneToday}
+        widgetToken={widgetToken}
+        onClose={() => setShowStreakModal(false)}
+        onRefresh={loadProgress}
+      />
+    )}
   </>;
 }

@@ -55,16 +55,48 @@ export async function rateLimit(bucket, limit, windowSec) {
 export const audit = (c, action, detail = "") =>
   db.run("INSERT INTO rp_audit (user_id, action, detail, ip) VALUES (?, ?, ?, ?)", [c.get("user")?.id ?? null, action, String(detail).slice(0, 500), clientIp(c)]);
 
-/** Calculates current streak, longest streak, and active days list */
-export function calculateStreak(dayStrings) {
-  if (!dayStrings || !dayStrings.length) return { current: 0, longest: 0, days: [] };
-  const uniqueDays = Array.from(new Set(dayStrings)).filter(Boolean).sort();
-  if (!uniqueDays.length) return { current: 0, longest: 0, days: [] };
+/** Calculates current streak, longest streak, today status, and 7-day rolling week history.
+ * Rule: User MUST study / complete at least one topic on a day for that day to count.
+ * If not done on a day (e.g. yesterday was missed), streak resets to zero!
+ */
+export function calculateStreak(dayStrings, refDateStr) {
+  const now = new Date();
+  const todayStr = refDateStr || now.toISOString().slice(0, 10);
+  const today = new Date(todayStr + "T00:00:00Z");
+
+  const uniqueDays = Array.from(new Set(dayStrings || [])).filter(Boolean).sort();
+  
+  // Build rolling 7-day week view ending today
+  const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const week = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today.getTime() - i * 86400000);
+    const dateStr = d.toISOString().slice(0, 10);
+    week.push({
+      name: weekDays[d.getUTCDay()],
+      date: dateStr,
+      done: uniqueDays.includes(dateStr),
+      isToday: i === 0,
+    });
+  }
+
+  if (!uniqueDays.length) {
+    return {
+      current: 0,
+      longest: 0,
+      todayDone: false,
+      status: "broken",
+      days: [],
+      week,
+      message: "Start your streak today! Study 1 topic to reach Day 1."
+    };
+  }
 
   const dateObjs = uniqueDays.map(d => new Date(d + "T00:00:00Z"));
+  
+  // Calculate historical longest streak
   let longest = 1;
   let cur = 1;
-
   for (let i = 1; i < dateObjs.length; i++) {
     const diffDays = Math.round((dateObjs[i] - dateObjs[i - 1]) / 86400000);
     if (diffDays === 1) {
@@ -75,22 +107,65 @@ export function calculateStreak(dayStrings) {
     }
   }
 
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const today = new Date(todayStr + "T00:00:00Z");
   const lastActive = dateObjs[dateObjs.length - 1];
   const daysSinceLast = Math.round((today - lastActive) / 86400000);
 
+  const todayDone = daysSinceLast === 0;
   let current = 0;
-  if (daysSinceLast === 0 || daysSinceLast === 1) {
+  let status = "broken";
+  let message = "";
+
+  if (todayDone) {
+    // User studied today! Calculate consecutive days backward from today
     current = 1;
     for (let i = dateObjs.length - 1; i > 0; i--) {
       const diffDays = Math.round((dateObjs[i] - dateObjs[i - 1]) / 86400000);
       if (diffDays === 1) current++;
       else break;
     }
+    status = "active";
+    message = `Streak active! You completed study goals for today (${current} day streak).`;
+  } else if (daysSinceLast === 1) {
+    // User studied yesterday, but has not completed study goals today yet.
+    // Streak is active from yesterday, but pending today's study.
+    current = 1;
+    for (let i = dateObjs.length - 1; i > 0; i--) {
+      const diffDays = Math.round((dateObjs[i] - dateObjs[i - 1]) / 86400000);
+      if (diffDays === 1) current++;
+      else break;
+    }
+    status = "at_risk";
+    message = `Streak at risk! Complete at least 1 topic today to maintain your ${current}-day streak.`;
+  } else {
+    // Missed yesterday! Streak resets to zero.
+    current = 0;
+    status = "broken";
+    message = "Your streak reset to 0 because yesterday was missed. Study 1 topic today to start a new streak!";
   }
 
-  return { current, longest, days: uniqueDays };
+  if (current > longest) longest = current;
+
+  return { current, longest, todayDone, status, days: uniqueDays, week, message };
+}
+
+export function createWidgetToken(userId) {
+  const sig = hmacHex("sha256", secret(), "widget:" + userId);
+  return Buffer.from(`${userId}:${sig}`).toString("base64url");
+}
+
+export function verifyWidgetToken(token) {
+  try {
+    if (!token) return null;
+    const raw = Buffer.from(token, "base64url").toString("utf8");
+    const [idStr, sig] = raw.split(":");
+    if (!idStr || !sig) return null;
+    const expected = hmacHex("sha256", secret(), "widget:" + idStr);
+    if (safeEqual(sig, expected)) {
+      const num = Number(idStr);
+      return Number.isSafeInteger(num) ? num : idStr;
+    }
+  } catch {}
+  return null;
 }
 
 /* ---------------- Email (SMTP) ---------------- */

@@ -8,6 +8,7 @@ import {
   HttpError, fail, randomToken, sha256, hmacHex, safeEqual, secret, hashPassword, verifyPassword, checkPassword,
   cleanEmail, str, safeUrl, jsonArr, parse, adminEmails, clientIp, rateLimit, audit, issueOtp, consumeOtp,
   ikConfigured, ikFolder, ikUploadAuth, ikPage, ikDeleteFolder, sendMail, calculateStreak,
+  createWidgetToken, verifyWidgetToken,
 } from "./lib.js";
 
 const COOKIE = "rp_session";
@@ -21,17 +22,20 @@ app.onError((err, c) => {
   return c.json({ error: "Something went wrong. Please try again." }, 500);
 });
 
-// Security headers + CSRF guard (state-changing requests must be same-origin JSON with a custom header).
+// Security headers + CSRF guard (state-changing requests must be same-origin JSON with a custom header, except token-signed widget actions).
 app.use("*", async (c, next) => {
+  const isWidgetAction = c.req.path === "/api/widget/quick-done";
   if (!["GET", "HEAD", "OPTIONS"].includes(c.req.method)) {
-    if (c.req.header("x-requested-with") !== "portal") fail(403, "Bad request origin.");
+    if (!isWidgetAction && c.req.header("x-requested-with") !== "portal") fail(403, "Bad request origin.");
     const origin = c.req.header("origin");
-    if (prod() && origin && new URL(origin).host !== (c.req.header("x-forwarded-host") || c.req.header("host"))) fail(403, "Bad request origin.");
+    if (!isWidgetAction && prod() && origin && new URL(origin).host !== (c.req.header("x-forwarded-host") || c.req.header("host"))) fail(403, "Bad request origin.");
   }
   await next();
   c.header("Cache-Control", "no-store");
   c.header("X-Content-Type-Options", "nosniff");
-  c.header("X-Frame-Options", "DENY");
+  if (c.req.path !== "/widget" && !c.req.path.startsWith("/api/widget")) {
+    c.header("X-Frame-Options", "DENY");
+  }
   c.header("Referrer-Policy", "no-referrer");
 });
 
@@ -165,41 +169,165 @@ app.put("/me", async c => {
   return c.json({ ok: true });
 });
 
-/* ---------------- Progress (track sheet) ---------------- */
+/* ---------------- Progress (track sheet & daily study streaks) ---------------- */
 app.get("/progress", async c => {
   const u = auth(c);
   const today = new Date().toISOString().slice(0, 10);
-  
-  // Record daily activity so visiting/logging in updates the streak
-  await db.run(
-    "INSERT OR IGNORE INTO rp_audit (user_id, action, detail, ip, created_at) " +
-    "SELECT ?, 'auth.login', 'Daily portal visit', ?, datetime('now') " +
-    "WHERE NOT EXISTS (SELECT 1 FROM rp_audit WHERE user_id = ? AND action IN ('auth.login', 'auth.visit') AND substr(created_at, 1, 10) = ?)",
-    [u.id, clientIp(c), u.id, today]
-  );
 
-  const [doneRows, auditRows] = await Promise.all([
+  // Fetch actual study progress records (curriculum items, JD checklists, and explicit study sessions)
+  const [doneRows, auditStudyRows, checklistRows] = await Promise.all([
     db.all("SELECT item_id, updated_at FROM rp_progress WHERE user_id = ?", [u.id]),
-    db.all("SELECT substr(created_at, 1, 10) as day FROM rp_audit WHERE user_id = ? AND action IN ('auth.login', 'auth.visit')", [u.id])
+    db.all("SELECT substr(created_at, 1, 10) as day FROM rp_audit WHERE user_id = ? AND action IN ('study.progress', 'study.session', 'study.checklist')", [u.id]),
+    db.all("SELECT substr(updated_at, 1, 10) as day FROM rp_job_checklists WHERE user_id = ?", [u.id])
   ]);
-  const progressDays = doneRows.map(r => r.updated_at ? r.updated_at.slice(0, 10) : "").filter(Boolean);
-  const loginDays = auditRows.map(r => r.day).filter(Boolean);
-  if (u.last_login_at) loginDays.push(u.last_login_at.slice(0, 10));
 
-  const allDays = Array.from(new Set([...progressDays, ...loginDays]));
+  const progressDays = doneRows.map(r => r.updated_at ? r.updated_at.slice(0, 10) : "").filter(Boolean);
+  const studyAuditDays = auditStudyRows.map(r => r.day).filter(Boolean);
+  const checklistDays = checklistRows.map(r => r.day).filter(Boolean);
+
+  // ONLY actual study days count toward the streak. Visits/logins do not artificially inflate it.
+  const allStudyDays = Array.from(new Set([...progressDays, ...studyAuditDays, ...checklistDays]));
+  const streak = calculateStreak(allStudyDays, today);
+  const topicsDoneToday = doneRows.filter(r => r.updated_at && r.updated_at.slice(0, 10) === today).length;
+  const widgetToken = createWidgetToken(u.id);
+
   return c.json({
     done: doneRows.map(r => r.item_id),
-    streak: calculateStreak(allDays)
+    streak,
+    today_done: streak.todayDone,
+    topics_done_today: topicsDoneToday,
+    widget_token: widgetToken
   });
 });
+
 app.post("/progress", async c => {
   const u = auth(c), b = await body(c);
   const items = (Array.isArray(b.items) ? b.items : [b.item_id]).map(x => str(x, 220)).filter(Boolean).slice(0, 400);
   for (const id of items) {
-    if (b.done) await db.run("INSERT OR IGNORE INTO rp_progress (user_id, item_id) VALUES (?, ?)", [u.id, id]);
-    else await db.run("DELETE FROM rp_progress WHERE user_id = ? AND item_id = ?", [u.id, id]);
+    if (b.done) {
+      await db.run(
+        "INSERT INTO rp_progress (user_id, item_id, updated_at) VALUES (?, ?, datetime('now')) " +
+        "ON CONFLICT(user_id, item_id) DO UPDATE SET updated_at = datetime('now')",
+        [u.id, id]
+      );
+      await db.run(
+        "INSERT INTO rp_audit (user_id, action, detail, ip, created_at) VALUES (?, 'study.progress', ?, ?, datetime('now'))",
+        [u.id, `Completed ${id}`, clientIp(c)]
+      );
+    } else {
+      await db.run("DELETE FROM rp_progress WHERE user_id = ? AND item_id = ?", [u.id, id]);
+    }
   }
-  return c.json({ ok: true });
+
+  // Recalculate streak immediately after progress update
+  const today = new Date().toISOString().slice(0, 10);
+  const [doneRows, auditStudyRows, checklistRows] = await Promise.all([
+    db.all("SELECT item_id, updated_at FROM rp_progress WHERE user_id = ?", [u.id]),
+    db.all("SELECT substr(created_at, 1, 10) as day FROM rp_audit WHERE user_id = ? AND action IN ('study.progress', 'study.session', 'study.checklist')", [u.id]),
+    db.all("SELECT substr(updated_at, 1, 10) as day FROM rp_job_checklists WHERE user_id = ?", [u.id])
+  ]);
+  const progressDays = doneRows.map(r => r.updated_at ? r.updated_at.slice(0, 10) : "").filter(Boolean);
+  const studyAuditDays = auditStudyRows.map(r => r.day).filter(Boolean);
+  const checklistDays = checklistRows.map(r => r.day).filter(Boolean);
+  const allStudyDays = Array.from(new Set([...progressDays, ...studyAuditDays, ...checklistDays]));
+  const streak = calculateStreak(allStudyDays, today);
+
+  return c.json({ ok: true, streak });
+});
+
+// Explicit study session logger (e.g. from Reader, daily widget check, or notes view)
+app.post("/study/session", async c => {
+  const u = auth(c), b = await body(c);
+  const topicId = str(b.topic_id || "general_study", 200);
+  const note = str(b.note || "Daily study completed", 250);
+  await db.run(
+    "INSERT INTO rp_audit (user_id, action, detail, ip, created_at) VALUES (?, 'study.session', ?, ?, datetime('now'))",
+    [u.id, `${topicId}: ${note}`, clientIp(c)]
+  );
+  if (b.mark_progress && b.item_id) {
+    await db.run(
+      "INSERT INTO rp_progress (user_id, item_id, updated_at) VALUES (?, ?, datetime('now')) " +
+      "ON CONFLICT(user_id, item_id) DO UPDATE SET updated_at = datetime('now')",
+      [u.id, str(b.item_id, 220)]
+    );
+  }
+  return c.json({ ok: true, message: "Study session logged successfully" });
+});
+
+/* ---------------- Android Phone & External Widget API ---------------- */
+app.get("/widget/streak", async c => {
+  let user = null;
+  const token = c.req.query("token");
+  if (token) {
+    const userId = verifyWidgetToken(token);
+    if (userId) {
+      user = await db.first("SELECT id, name, email, career_roles FROM rp_users WHERE id = ? AND status = 'active'", [userId]);
+    }
+  }
+  if (!user) {
+    try { user = auth(c); } catch {}
+  }
+  if (!user) {
+    return c.json({
+      ok: false,
+      error: "Authentication required. Log in or provide a valid widget token.",
+      streak: 0,
+      today_done: false,
+      status: "unauthorized"
+    }, 401);
+  }
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const [doneRows, auditStudyRows, checklistRows] = await Promise.all([
+    db.all("SELECT item_id, updated_at FROM rp_progress WHERE user_id = ?", [user.id]),
+    db.all("SELECT substr(created_at, 1, 10) as day FROM rp_audit WHERE user_id = ? AND action IN ('study.progress', 'study.session', 'study.checklist')", [user.id]),
+    db.all("SELECT substr(updated_at, 1, 10) as day FROM rp_job_checklists WHERE user_id = ?", [user.id])
+  ]);
+
+  const progressDays = doneRows.map(r => r.updated_at ? r.updated_at.slice(0, 10) : "").filter(Boolean);
+  const auditDays = auditStudyRows.map(r => r.day).filter(Boolean);
+  const checklistDays = checklistRows.map(r => r.day).filter(Boolean);
+  const allStudyDays = Array.from(new Set([...progressDays, ...auditDays, ...checklistDays]));
+
+  const streak = calculateStreak(allStudyDays, todayStr);
+  const topicsDoneToday = doneRows.filter(r => r.updated_at && r.updated_at.slice(0, 10) === todayStr).length;
+
+  return c.json({
+    ok: true,
+    user_id: user.id,
+    user_name: user.name ? user.name.split(" ")[0] : "Student",
+    streak: streak.current,
+    longest: streak.longest,
+    today_done: streak.todayDone,
+    topics_done_today: topicsDoneToday,
+    status: streak.status,
+    week: streak.week,
+    message: streak.message,
+    total_topics_done: doneRows.length,
+    timestamp: new Date().toISOString()
+  });
+});
+
+app.post("/widget/quick-done", async c => {
+  let user = null;
+  const token = c.req.query("token") || (await body(c)).token;
+  if (token) {
+    const userId = verifyWidgetToken(token);
+    if (userId) {
+      user = await db.first("SELECT id, name, email FROM rp_users WHERE id = ? AND status = 'active'", [userId]);
+    }
+  }
+  if (!user) {
+    try { user = auth(c); } catch {}
+  }
+  if (!user) fail(401, "Unauthorized");
+
+  await db.run(
+    "INSERT INTO rp_audit (user_id, action, detail, ip, created_at) VALUES (?, 'study.session', 'Quick Study logged via Android Widget', ?, datetime('now'))",
+    [user.id, clientIp(c)]
+  );
+
+  return c.json({ ok: true, message: "Today marked as studied!" });
 });
 
 /* ---------------- Documents and the protected viewer ---------------- */
@@ -357,19 +485,19 @@ app.get("/admin/stats", async c => {
 app.get("/admin/users", async c => {
   admin(c);
   const users = await db.all("SELECT id, name, email, role, status, career_roles, phone, created_at, last_login_at FROM rp_users ORDER BY id DESC LIMIT 1000");
-  const [progressRows, auditRows] = await Promise.all([
+  const [progressRows, auditRows, checklistRows] = await Promise.all([
     db.all("SELECT user_id, substr(updated_at, 1, 10) as day FROM rp_progress"),
-    db.all("SELECT user_id, substr(created_at, 1, 10) as day FROM rp_audit WHERE action IN ('auth.login', 'auth.visit')")
+    db.all("SELECT user_id, substr(created_at, 1, 10) as day FROM rp_audit WHERE action IN ('study.progress', 'study.session', 'study.checklist')"),
+    db.all("SELECT user_id, substr(updated_at, 1, 10) as day FROM rp_job_checklists")
   ]);
   const userDays = new Map();
-  for (const r of [...progressRows, ...auditRows]) {
+  for (const r of [...progressRows, ...auditRows, ...checklistRows]) {
     if (!r.day || !r.user_id) continue;
     if (!userDays.has(r.user_id)) userDays.set(r.user_id, []);
     userDays.get(r.user_id).push(r.day);
   }
   const usersWithStreaks = users.map(u => {
     const days = userDays.get(u.id) || [];
-    if (u.last_login_at) days.push(u.last_login_at.slice(0, 10));
     return {
       ...u,
       streak: calculateStreak(days)
@@ -385,13 +513,13 @@ app.get("/admin/users/:id/detail", async c => {
   await ensureJdTable();
   const [progress, auditRows, checklists] = await Promise.all([
     db.all("SELECT item_id, updated_at FROM rp_progress WHERE user_id = ?", [id]),
-    db.all("SELECT substr(created_at, 1, 10) as day FROM rp_audit WHERE user_id = ? AND action IN ('auth.login', 'auth.visit')", [id]),
+    db.all("SELECT substr(created_at, 1, 10) as day FROM rp_audit WHERE user_id = ? AND action IN ('study.progress', 'study.session', 'study.checklist')", [id]),
     db.all("SELECT * FROM rp_job_checklists WHERE user_id = ? ORDER BY updated_at DESC", [id])
   ]);
   const progressDays = progress.map(r => r.updated_at ? r.updated_at.slice(0, 10) : "").filter(Boolean);
-  const loginDays = auditRows.map(r => r.day).filter(Boolean);
-  if (u.last_login_at) loginDays.push(u.last_login_at.slice(0, 10));
-  const streak = calculateStreak([...progressDays, ...loginDays]);
+  const studyAuditDays = auditRows.map(r => r.day).filter(Boolean);
+  const checklistDays = checklists.map(cl => cl.updated_at ? cl.updated_at.slice(0, 10) : "").filter(Boolean);
+  const streak = calculateStreak([...progressDays, ...studyAuditDays, ...checklistDays]);
   const logins = await db.all("SELECT id, action, detail, ip, created_at FROM rp_audit WHERE user_id = ? AND action IN ('auth.login', 'auth.logout') ORDER BY id DESC LIMIT 30", [id]);
   return c.json({
     user: { ...u, career_roles: parse(u.career_roles, []), plan: parse(u.plan, []) },

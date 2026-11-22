@@ -11,3 +11,21 @@ export async function api<T = any>(path: string, method = "GET", body?: unknown)
 }
 export type User = { id: number; name: string; email: string; role: "student" | "admin"; career_roles: string[]; plan: string[] };
 export type Doc = { id: number; slug: string; title: string; description: string; career_roles: string[]; pages: number; sort_order: number; published: boolean };
+
+export type StreakData = {
+  current: number;
+  longest: number;
+  todayDone: boolean;
+  status: "active" | "at_risk" | "broken";
+  days: string[];
+  week: { name: string; date: string; done: boolean; isToday: boolean }[];
+  message: string;
+};
+
+export type ProgressResponse = {
+  done: string[];
+  streak: StreakData;
+  today_done: boolean;
+  topics_done_today: number;
+  widget_token: string;
+};

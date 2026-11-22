@@ -5,7 +5,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { api, type Doc, type StreakData } from "./api";
 import { useAuth, Msg } from "./App";
 import { NOTEBOOKS, CAREER_ROLES } from "../shared/catalog";
-import { StreakDashboardCard, StreakModal, updateAndroidAppBadge } from "./StreakWidget";
+import { StreakModal, updateAndroidAppBadge } from "./StreakWidget";
 import topicsJson from "../shared/topics.json";
 
 type Item = { id: string; title: string; page?: number; masterPage?: number; tufUrl?: string; tufType?: string; tufSlug?: string; leetcodeUrl?: string; gfgUrl?: string; youtubeUrl?: string; duration?: string };
@@ -145,32 +145,106 @@ export default function Track() {
         </div>
       </div>
     )}
-    {user && (
-      <StreakDashboardCard
-        streak={streak}
-        todayDone={todayDone}
-        topicsDoneToday={topicsDoneToday}
-        onOpenModal={() => setShowStreakModal(true)}
-      />
-    )}
-    <div className="card">
-      <div className="row"><div style={{ flex: 1, minWidth: 220 }}>
-        <h1>Hi {user?.name ? user.name.split(" ")[0] : "Student"}, here is your track sheet</h1>
-        <div className="muted small">{user ? <>Roles: {(user?.career_roles || []).map(r => CAREER_ROLES.find(x => x.id === r)?.label).filter(Boolean).join(" · ")} · <Link to="/plan">change</Link></> : <>Tracking all {NOTEBOOKS.length} curriculum notebooks · Progress saved locally · <Link to="/signup">Create free account</Link> to sync across devices</>}</div>
-      </div>
-        <div className="row" style={{ gap: 20 }}>
-          <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 28, fontWeight: 700, color: (streak?.current || 0) > 0 ? "#e65100" : "var(--ink)" }}>
-              {streak?.current || 0}
-            </div>
-            <div className="small muted">day streak (best: {streak?.longest || 0})</div>
+    <div className="card" style={{ marginBottom: 16 }}>
+      <div className="row" style={{ alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
+        <div style={{ flex: 1, minWidth: 240 }}>
+          <h1 style={{ marginBottom: 4 }}>Hi {user?.name ? user.name.split(" ")[0] : "Student"}, here is your track sheet</h1>
+          <div className="muted small">
+            {user ? (
+              <>Roles: {(user?.career_roles || []).map(r => CAREER_ROLES.find(x => x.id === r)?.label).filter(Boolean).join(" · ")} · <Link to="/plan">change</Link></>
+            ) : (
+              <>Tracking all {NOTEBOOKS.length} curriculum notebooks · Progress saved locally · <Link to="/signup">Create free account</Link> to sync across devices</>
+            )}
           </div>
-          <div style={{ textAlign: "right" }}>
-            <div style={{ fontSize: 28, fontWeight: 700, color: "var(--ink)" }}>{pct(finished, total)}%</div>
+        </div>
+
+        <div className="row" style={{ gap: 20, alignItems: "center" }}>
+          {user && (
+            <button
+              type="button"
+              onClick={() => setShowStreakModal(true)}
+              className="streak-header-stat"
+              title="Click to view streak details and reminders"
+              style={{
+                background: "transparent",
+                border: "none",
+                padding: "4px 10px",
+                cursor: "pointer",
+                textAlign: "center",
+                borderRadius: 8,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                <span style={{ fontSize: 22 }} aria-hidden="true">{(streak?.current || 0) > 0 ? "🔥" : "⚡"}</span>
+                <span style={{ fontSize: 28, fontWeight: 800, color: (streak?.current || 0) > 0 ? "#d9480f" : "var(--ink)" }}>
+                  {streak?.current || 0}
+                </span>
+              </div>
+              <div className="small muted" style={{ whiteSpace: "nowrap" }}>
+                day streak <span style={{ opacity: 0.8 }}>(best: {streak?.longest || 0})</span>
+              </div>
+            </button>
+          )}
+
+          <div style={{ textAlign: "right", minWidth: 100 }}>
+            <div style={{ fontSize: 28, fontWeight: 800, color: "var(--ink)" }}>{pct(finished, total)}%</div>
             <div className="small muted">{finished} of {total} topics done</div>
           </div>
-        </div></div>
-      <div className="row" style={{ marginTop: 10 }}><Bar d={finished} n={total} /></div>
+        </div>
+      </div>
+
+      {user && (
+        <div style={{
+          marginTop: 14,
+          paddingTop: 12,
+          borderTop: "1px solid var(--line)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: 12
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            {todayDone ? (
+              <span className="streak-status-pill success">
+                ✓ Studied today ({topicsDoneToday} topic{topicsDoneToday === 1 ? "" : "s"})
+              </span>
+            ) : (streak?.current || 0) > 0 ? (
+              <span className="streak-status-pill warning">
+                ! Streak at risk: complete 1 topic before midnight
+              </span>
+            ) : (
+              <span className="streak-status-pill neutral">
+                Study 1 topic today to start streak
+              </span>
+            )}
+            <button
+              type="button"
+              className="btn sm"
+              onClick={() => setShowStreakModal(true)}
+              style={{ fontSize: 12, padding: "3px 10px", height: "auto" }}
+            >
+              Streak Details & Reminders
+            </button>
+          </div>
+
+          {/* Rolling 7-day mini tracker */}
+          <div className="streak-week-circles">
+            {(streak?.week || []).map((w, idx) => (
+              <div key={idx} className={`week-circle-item ${w.done ? "done" : w.isToday ? "today-pending" : ""}`}>
+                <div className="week-circle-dot">
+                  {w.done ? "✓" : w.isToday ? "•" : ""}
+                </div>
+                <span className="week-circle-label">{w.name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="row" style={{ marginTop: 12 }}>
+        <Bar d={finished} n={total} />
+      </div>
     </div>
     <Msg>{err}</Msg>
     <div className="row" style={{ marginBottom: 12, flexWrap: "wrap", gap: 10, alignItems: "center" }}>

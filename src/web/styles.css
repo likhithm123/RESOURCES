@@ -2304,75 +2304,14 @@ input.page-input,
 
 /* Streak Details Modal */
 .streak-modal {
-    max-width: 540px !important;
+    max-width: 480px !important;
+    width: 100%;
 }
-.streak-modal-hero {
-    background: linear-gradient(135deg, #1b3fae 0%, #0c2461 100%);
-    color: #ffffff;
-    border-radius: 12px;
-    padding: 20px;
-    text-align: center;
-    margin-bottom: 18px;
-}
-.streak-large-display {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    margin-bottom: 14px;
-}
-.streak-large-display .flame-icon {
-    font-size: 42px;
-}
-.streak-large-display .count-number {
-    font-size: 48px;
-    font-weight: 800;
-    line-height: 1;
-}
-.streak-large-display .day-text {
-    font-size: 20px;
-    font-weight: 600;
-    opacity: 0.9;
-    align-self: flex-end;
-    margin-bottom: 6px;
-}
-.streak-stats-row {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
-    padding: 10px;
-    margin-bottom: 12px;
-}
-.stat-box .stat-num {
-    font-size: 18px;
-    font-weight: 700;
-}
-.stat-box .stat-desc {
-    font-size: 11px;
-    opacity: 0.8;
-}
-.streak-banner-alert {
-    padding: 8px 12px;
-    border-radius: 6px;
-    font-size: 12px;
-    font-weight: 500;
-    background: rgba(255, 255, 255, 0.15);
+.streak-header-stat:hover {
+    background: rgba(0, 0, 0, 0.04) !important;
 }
 
-/* Android Features in Modal */
-.streak-section-box {
-    background: #f8f9fa;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 16px;
-}
-.section-title-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
+/* Reminder Settings */
 .android-feature-card {
     background: #ffffff;
     border: 1px solid var(--border);
@@ -2417,7 +2356,7 @@ input.page-input,
     border-radius: 50%;
 }
 .switch-toggle input:checked + .slider {
-    background-color: #1b3fae;
+    background-color: #2563eb;
 }
 .switch-toggle input:checked + .slider:before {
     transform: translateX(20px);

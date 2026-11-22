@@ -208,110 +208,141 @@ export function StreakModal({
 
   return (
     <div className="modal-backdrop" onClick={onClose} role="dialog" aria-modal="true">
-      <div className="modal-sheet streak-modal" onClick={e => e.stopPropagation()}>
-        <div className="modal-sheet-header">
-          <div className="row" style={{ alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 24 }}>🔥</span>
+      <div className="modal-content streak-modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <div className="row" style={{ alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 20 }} aria-hidden="true">🔥</span>
             <div>
-              <h2 style={{ margin: 0, fontSize: 18 }}>Daily Study Streak</h2>
-              <div className="small muted">Updates daily with completed topics · Resets to 0 if not completed</div>
+              <h3 style={{ margin: 0, fontSize: 16 }}>Daily Study Streak</h3>
+              <div className="small muted">Resets to 0 if a day is missed</div>
             </div>
           </div>
-          <button className="btn sm" onClick={onClose} aria-label="Close dialog">✕</button>
+          <button className="modal-close" onClick={onClose} aria-label="Close dialog">✕</button>
         </div>
 
-        <div className="modal-sheet-body">
-          {/* Main Streak Counter */}
-          <div className="streak-modal-hero">
-            <div className="streak-large-display">
-              <span className="flame-icon">{current > 0 ? "🔥" : "⚡"}</span>
-              <span className="count-number">{current}</span>
-              <span className="day-text">Days</span>
+        <div className="modal-body" style={{ gap: 14 }}>
+          {/* Main Streak Counter Card */}
+          <div style={{
+            background: todayDone ? "#f0fdf4" : (current > 0 ? "#fff7ed" : "#f8fafc"),
+            border: `1px solid ${todayDone ? "#bbf7d0" : (current > 0 ? "#fed7aa" : "var(--line)")}`,
+            borderRadius: 10,
+            padding: "16px",
+            textAlign: "center"
+          }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 6 }}>
+              <span style={{ fontSize: 36 }} aria-hidden="true">{current > 0 ? "🔥" : "⚡"}</span>
+              <span style={{ fontSize: 40, fontWeight: 800, color: current > 0 ? "#d9480f" : "var(--ink2)", lineHeight: 1 }}>
+                {current}
+              </span>
+              <span style={{ fontSize: 16, fontWeight: 600, color: "var(--muted)", alignSelf: "flex-end", marginBottom: 4 }}>
+                Days
+              </span>
             </div>
-            <div className="streak-stats-row">
-              <div className="stat-box">
-                <div className="stat-num">{longest}</div>
-                <div className="stat-desc">Best Streak</div>
+
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(3, 1fr)",
+              gap: 8,
+              marginTop: 10,
+              padding: "10px",
+              background: "#ffffff",
+              borderRadius: 8,
+              border: "1px solid var(--line)"
+            }}>
+              <div>
+                <div style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}>{longest}d</div>
+                <div className="small muted">Best Streak</div>
               </div>
-              <div className="stat-box">
-                <div className="stat-num">{todayDone ? "Done" : "0 / 1"}</div>
-                <div className="stat-desc">Today's Goal</div>
+              <div>
+                <div style={{ fontSize: 17, fontWeight: 700, color: todayDone ? "#16a34a" : "#d97706" }}>
+                  {todayDone ? "Done" : "0 / 1"}
+                </div>
+                <div className="small muted">Today's Goal</div>
               </div>
-              <div className="stat-box">
-                <div className="stat-num">{streak?.days.length || 0}</div>
-                <div className="stat-desc">Total Active Days</div>
+              <div>
+                <div style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}>{streak?.days.length || 0}</div>
+                <div className="small muted">Active Days</div>
               </div>
             </div>
 
-            <div className={`streak-banner-alert ${todayDone ? "success" : current > 0 ? "warning" : "neutral"}`}>
+            <div style={{ marginTop: 10 }}>
               {todayDone ? (
-                <span>Today's goal completed! You studied {topicsDoneToday} topic(s). Keep it going tomorrow!</span>
+                <div className="streak-status-pill success" style={{ display: "inline-flex" }}>
+                  ✓ Today Completed! You studied {topicsDoneToday} topic{topicsDoneToday === 1 ? "" : "s"}.
+                </div>
               ) : current > 0 ? (
-                <span>Streak at risk! Complete at least 1 topic today to maintain your {current}-day streak.</span>
+                <div className="streak-status-pill warning" style={{ display: "inline-flex" }}>
+                  ! Streak at risk: complete 1 topic before midnight.
+                </div>
               ) : (
-                <span>Complete 1 topic in the track sheet today to start your Day 1 streak!</span>
+                <div className="streak-status-pill neutral" style={{ display: "inline-flex" }}>
+                  Study 1 topic today in your track sheet to start Day 1!
+                </div>
               )}
-            </div>
-
-            <div className="small muted" style={{ marginTop: 12, textAlign: "center", lineHeight: 1.5, background: "#f8f9fa", padding: "10px 14px", borderRadius: 8, border: "1px solid #e9ecef" }}>
-              <strong>Authentic Study Rule:</strong> Streak increases automatically only when you check off completed topics in your curriculum track sheet or JD checklists. Manual check-ins are disabled.
             </div>
           </div>
 
-          {/* Section: Daily Study Reminders */}
-          <div className="streak-section-box">
-            <div className="section-title-row">
-              <span className="section-icon" aria-hidden="true">⚙</span>
-              <h3 style={{ margin: 0, fontSize: 16 }}>Daily Study Reminders</h3>
-            </div>
-            <p className="small muted" style={{ marginTop: 4, marginBottom: 14 }}>
-              Set daily reminder alerts to study your topic before midnight and keep your streak alive.
-            </p>
+          {/* Authentic Rule Notice */}
+          <div className="small muted" style={{
+            padding: "10px 14px",
+            background: "#f8fafc",
+            border: "1px solid var(--line)",
+            borderRadius: 8,
+            lineHeight: 1.5,
+            textAlign: "center"
+          }}>
+            <strong>Authentic Study Rule:</strong> Your streak updates automatically only when you mark topics completed in your track sheet or JD checklists. There is no manual override.
+          </div>
 
-            <div className="android-feature-card">
-              <div className="feature-header">
-                <div>
-                  <strong>Daily Reminder Notification</strong>
-                  <div className="small muted">Receive a push alert if you haven't completed your topic before midnight.</div>
-                </div>
-                <label className="switch-toggle" title="Toggle daily reminder">
-                  <input
-                    type="checkbox"
-                    checked={reminderActive}
-                    onChange={handleToggleReminder}
-                  />
-                  <span className="slider round"></span>
-                </label>
+          {/* Daily Study Reminder Notification */}
+          <div style={{
+            border: "1px solid var(--line)",
+            borderRadius: 8,
+            padding: "14px 16px",
+            background: "#ffffff"
+          }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+              <div>
+                <strong style={{ fontSize: 14 }}>Daily Study Reminder</strong>
+                <div className="small muted">Receive an alert before midnight if you haven't studied yet.</div>
               </div>
-
-              {reminderActive && (
-                <div className="reminder-settings-row" style={{ marginTop: 10 }}>
-                  <label className="small">Reminder Time:</label>
-                  <input
-                    type="time"
-                    className="time-picker-input"
-                    value={reminderTime}
-                    onChange={e => {
-                      setReminderTime(e.target.value);
-                      scheduleAndroidReminder(e.target.value);
-                    }}
-                  />
-                  <button
-                    type="button"
-                    className="btn sm"
-                    onClick={handleTestReminder}
-                    disabled={testingNotification}
-                  >
-                    {testingNotification ? "Sending..." : "Test on Phone"}
-                  </button>
-                </div>
-              )}
+              <label className="switch-toggle" title="Toggle daily reminder">
+                <input
+                  type="checkbox"
+                  checked={reminderActive}
+                  onChange={handleToggleReminder}
+                />
+                <span className="slider round"></span>
+              </label>
             </div>
+
+            {reminderActive && (
+              <div className="row" style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--line)", gap: 10, alignItems: "center" }}>
+                <label className="small" style={{ fontWeight: 600 }}>Alert Time:</label>
+                <input
+                  type="time"
+                  className="time-picker-input"
+                  value={reminderTime}
+                  onChange={e => {
+                    setReminderTime(e.target.value);
+                    scheduleAndroidReminder(e.target.value);
+                  }}
+                />
+                <button
+                  type="button"
+                  className="btn sm"
+                  onClick={handleTestReminder}
+                  disabled={testingNotification}
+                >
+                  {testingNotification ? "Testing..." : "Test on Phone"}
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
-        <div className="modal-sheet-footer">
-          <button className="btn primary full" onClick={onClose}>
+        <div className="modal-actions" style={{ padding: "12px 20px", borderTop: "1px solid #e5e7eb", background: "#f8fafc", margin: 0, justifyContent: "flex-end" }}>
+          <button type="button" className="btn primary sm" onClick={onClose} style={{ minWidth: 90 }}>
             Done
           </button>
         </div>

@@ -9,8 +9,8 @@ const masterDir = path.resolve("..", "all_pdfs_local", "02_long_form_master_edit
 const quickDir = path.resolve("..", "all_pdfs_local", "01_quick_revision_notes_pdfs");
 
 const uploads = [
-  { dir: masterDir, file: "19-ai-engineer-llms-master.pdf", folder: "/resources-portal/long-pdfs" },
-  { dir: quickDir, file: "19-ai-engineer-llms.pdf", folder: "/resources-portal/pdfs" }
+  { dir: masterDir, file: "10-dsa-basics-data-structures-master.pdf", folder: "/resources-portal/long-pdfs" },
+  { dir: quickDir, file: "10-dsa-basics-data-structures.pdf", folder: "/resources-portal/pdfs" }
 ];
 
 console.log(`Uploading ${uploads.length} updated PDFs to ImageKit...`);

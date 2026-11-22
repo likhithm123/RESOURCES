@@ -68,13 +68,11 @@ for (const f of files) {
   }));
   console.log(" ✓ images uploaded");
 
-  console.log(`Uploading raw PDF to ImageKit /resources-portal/long-pdfs/${f}...`);
-  await uploadRawPdf(path.join(pdfDir, f));
-  console.log(" ✓ PDF uploaded");
+  // Raw PDFs are never uploaded: documents are served only as signed page images so they stay view-only.
 
-  const titleBase = slug.replace(/-/g, " ").replace(/^\d+\s*/, "").toUpperCase();
-  const title = `${titleBase} [Master Deep-Dive Edition]`;
-  const description = `Comprehensive long-form edition (${pages} pages) with in-depth real-life narrative analogies, line-by-line annotated implementations, inputs/outputs, and algorithmic complexities.`;
+  const h1 = execFileSync("python3", ["-c", "import sys,pymupdf;print(pymupdf.open(sys.argv[1])[0].get_text().split(chr(10))[0].strip())", path.join(pdfDir, f)]).toString().trim();
+  const title = h1 || slug;
+  const description = `Comprehensive long-form edition (${pages} pages) with deeper topics, real-life analogies, code, traces and failure modes that go beyond the main notebook.`;
   const roles = JSON.stringify(["sde", "fullstack", "ai", "ml", "data", "devops"]);
   const order = 100 + (parseInt(slug.match(/^\d+/)?.[0] || "50", 10));
 

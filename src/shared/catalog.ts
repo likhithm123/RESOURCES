@@ -56,6 +56,11 @@ export const NOTEBOOKS: Notebook[] = [
   { slug: "40-spring-boot-and-microservices", title: "Spring Boot & Microservices Enterprise Architecture", roles: ["sde", "fullstack"] },
   { slug: "41-go-programming-and-concurrency", title: "Go Programming & Concurrency Systems Architecture", roles: ["sde", "devops", "fullstack", "security"] },
   { slug: "42-product-company-dsa-track", title: "Product Company DSA Track: Advanced Problems and Patterns", roles: ["sde", "fullstack"] },
+  { slug: "43-flutter-app-development", title: "Flutter App Development: Android, iOS and Web", roles: ["fullstack", "sde"] },
+  { slug: "44-embedded-systems", title: "Embedded Systems: Microcontrollers, RTOS and IoT", roles: ["sde"] },
+  { slug: "45-python-for-ai-ml", title: "Python for AI and ML: NumPy, Pandas and Preprocessing", roles: ["ai", "ml", "data"] },
+  { slug: "46-last-minute-revision", title: "Last-Minute Revision: Every Module at a Glance", roles: ALL },
+  { slug: "47-advanced-deep-dives", title: "Advanced Deep Dives Across Subjects", roles: ALL },
 ];
 
 export const roleLabel = (id: string) => CAREER_ROLES.find(r => r.id === id)?.label || id;

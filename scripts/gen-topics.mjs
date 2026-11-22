@@ -35,22 +35,18 @@ const notebooks = {};
       if (inCode) continue;
       if (line.startsWith("## ")) {
         const title = line.slice(3).replace(/\*\*/g, "").trim();
-        const secMaster = masterPagemap[slug]?.[title];
-        const secShort = pagemap[slug]?.[title] || secMaster || 1;
-        section = { id: `${slug}/${slugify(title)}`, title, items: [], page: secShort, masterPage: secMaster || secShort };
+        section = { id: `${slug}/${slugify(title)}`, title, items: [], page: pagemap[slug]?.[title] || 1 };
         nb.sections.push(section);
       } else if (line.startsWith("### ") && section) {
         const title = line.slice(4).replace(/\*\*/g, "").trim();
         let id = `${section.id}/${slugify(title)}`;
         while (section.items.some(i => i.id === id)) id += "-x";
-        const itMaster = masterPagemap[slug]?.[section.title + " >> " + title] || masterPagemap[slug]?.[title] || section.masterPage;
-        const itShort = pagemap[slug]?.[section.title + " >> " + title] || pagemap[slug]?.[title] || section.page || itMaster || 1;
+        const itShort = pagemap[slug]?.[section.title + " >> " + title] || section.page || 1;
         const tuf = tufMap[id] || tufMap[slugify(title)];
         section.items.push({
           id,
           title,
           page: itShort,
-          masterPage: itMaster || itShort,
           ...(tuf?.url ? { tufUrl: tuf.url } : {}),
           ...(tuf?.type ? { tufType: tuf.type } : {}),
           ...(tuf?.slug ? { tufSlug: tuf.slug } : {}),
@@ -64,7 +60,29 @@ const notebooks = {};
   }
   // A section without sub-items becomes one checklist item itself.
   for (const nb of Object.values(notebooks))
-    for (const s of nb.sections) if (!s.items.length) s.items.push({ id: s.id + "/done", title: s.title, page: s.page, ...(s.masterPage ? { masterPage: s.masterPage } : {}) });
+    for (const s of nb.sections) if (!s.items.length) s.items.push({ id: s.id + "/done", title: s.title, page: s.page });
+}
+// Deep-dive editions: every "## " topic of long_notes becomes a checklist item that opens the deep-dive PDF at its page.
+const longDir = join(here, "..", "..", "long_notes", "content");
+if (existsSync(longDir)) {
+  const files = readdirSync(longDir).filter(f => f.endsWith(".md")).sort((a, b) => a.localeCompare(b, "en", { numeric: true }));
+  for (const f of files) {
+    const masterSlug = f.replace(/(\.\d+)?\.md$/, "");
+    const base = masterSlug.replace(/-master$/, "");
+    const nb = (notebooks[base] ||= { slug: base, sections: [] });
+    let sec = nb.sections.find(x => x.deep);
+    if (!sec) { sec = { id: `${base}/deep`, title: "Deep-Dive Edition topics", deep: true, items: [] }; nb.sections.push(sec); }
+    let inCode = false;
+    for (const line of readFileSync(join(longDir, f), "utf8").split("\n")) {
+      if (line.startsWith("```")) { inCode = !inCode; continue; }
+      if (inCode || !line.startsWith("## ")) continue;
+      const title = line.slice(3).replace(/\*\*/g, "").trim();
+      let id = `${base}/deep/${slugify(title)}`;
+      while (sec.items.some(i => i.id === id)) id += "-x";
+      sec.items.push({ id, title, deep: true, masterPage: masterPagemap[masterSlug]?.[title] || 1 });
+    }
+    sec.masterPage = sec.items[0]?.masterPage || 1;
+  }
 }
 writeFileSync(out, JSON.stringify(notebooks));
 const count = Object.values(notebooks).reduce((n, nb) => n + nb.sections.reduce((m, s) => m + s.items.length, 0), 0);

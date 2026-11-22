@@ -8,8 +8,8 @@ import { NOTEBOOKS, CAREER_ROLES } from "../shared/catalog";
 import { StreakModal, updateAndroidAppBadge } from "./StreakWidget";
 import topicsJson from "../shared/topics.json";
 
-type Item = { id: string; title: string; page?: number; masterPage?: number; tufUrl?: string; tufType?: string; tufSlug?: string; leetcodeUrl?: string; gfgUrl?: string; youtubeUrl?: string; duration?: string };
-type Section = { id: string; title: string; page?: number; masterPage?: number; items: Item[] };
+type Item = { id: string; title: string; page?: number; masterPage?: number; deep?: boolean; tufUrl?: string; tufType?: string; tufSlug?: string; leetcodeUrl?: string; gfgUrl?: string; youtubeUrl?: string; duration?: string };
+type Section = { id: string; title: string; page?: number; masterPage?: number; deep?: boolean; items: Item[] };
 const TOPICS = topicsJson as Record<string, { slug: string; sections: Section[] }>;
 const A2Z = "11-dsa-a2z-solutions";
 const tufSlug = (t: string) => t.toLowerCase().replace(/\(.*?\)/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -268,7 +268,8 @@ export default function Track() {
     })}</div></div>}
 
     {sortedMine.map(nb => {
-      const rawSections = TOPICS[nb.slug]?.sections || [];
+      const hasDeepDoc = Object.values(docs || {}).some(d => d.slug === `${nb.slug}-master`);
+      const rawSections = (TOPICS[nb.slug]?.sections || []).filter(s => !s.deep || hasDeepDoc);
       const sections = needle ? [...rawSections].sort((a, b) => {
         const scoreSec = (s: Section) => {
           let score = s.title.toLowerCase().includes(needle) ? 10 : 0;
@@ -287,8 +288,8 @@ export default function Track() {
       const isA2Z = nb.slug === A2Z;
       const read = (page?: number, itemId?: string) => `/read/${nb.slug}${page ? `?page=${page}` : ""}${itemId ? `${page ? "&" : "?"}item=${encodeURIComponent(itemId)}` : ""}`;
       const shortRead = read;
-      const prefix = nb.slug.slice(0, 3);
-      const masterDoc = Object.values(docs || {}).find(d => (d.slug === `${nb.slug}-master` || (d.slug.startsWith(prefix) && d.slug.endsWith("-master"))));
+      const masterDoc = Object.values(docs || {}).find(d => d.slug === `${nb.slug}-master`);
+      const hasQuick = rawSections.some(s => !s.deep);
       const masterSlug = masterDoc ? masterDoc.slug : `${nb.slug}-master`;
       const masterRead = (page?: number, itemId?: string) => `/read/${masterSlug}${page ? `?page=${page}` : ""}${itemId ? `${page ? "&" : "?"}item=${encodeURIComponent(itemId)}` : ""}`;
       const toUrl = (path: string) => user ? path : `/login?next=${encodeURIComponent(path)}`;
@@ -310,8 +311,8 @@ export default function Track() {
           </div>
           <div className="row" style={{ width: 140 }}><Bar d={d} n={items.length} /></div>
           <div className="row" style={{ gap: 8, flexWrap: "wrap", alignItems: "center" }} onClick={e => e.stopPropagation()}>
-            <a className="btn sm" href={toUrl(read())} target={user ? "_blank" : undefined} rel="noopener noreferrer" title="Open Quick Revision Notes in new tab">Quick Revise</a>
-            <a className="btn sm primary" href={toUrl(masterRead())} target={user ? "_blank" : undefined} rel="noopener noreferrer" title="Open Master Deep-Dive Edition in new tab">Master Edition {masterDoc ? `(${masterDoc.pages}p)` : ""}</a>
+            {hasQuick && <a className="btn sm primary" href={toUrl(read())} target={user ? "_blank" : undefined} rel="noopener noreferrer" title="Open Quick Revision notes in new tab">Quick Revise</a>}
+            {masterDoc && <a className="btn sm" href={toUrl(masterRead())} target={user ? "_blank" : undefined} rel="noopener noreferrer" title="Open the Deep-Dive edition in new tab">Deep Dive ({masterDoc.pages}p)</a>}
           </div>
         </div>
         {isOpen && sections.map(sec => {
@@ -332,17 +333,16 @@ export default function Track() {
               <button className="sm" onClick={e => { e.stopPropagation(); mark(sec.items.map(i => i.id), sd !== sec.items.length); }}>{sd === sec.items.length ? "Unmark all" : "Mark all"}</button>
             </div>
             {sOpen && shown.map(it => {
-              const masterP = it.masterPage || sec.masterPage || it.page || sec.page;
-              const shortP = it.page || sec.page || it.masterPage || sec.masterPage;
-              const targetPage = masterP;
-              const targetUrl = masterRead(masterP, it.id);
-              const label = `Notes · p.${masterP}`;
+              const deep = !!(it.deep || sec.deep);
+              const targetPage = deep ? (it.masterPage || sec.masterPage || 1) : (it.page || sec.page || 1);
+              const targetUrl = deep ? masterRead(targetPage, it.id) : shortRead(targetPage, it.id);
+              const label = `${deep ? "Deep Dive" : "Quick"} · p.${targetPage}`;
+              if (deep && !masterDoc) return null;
 
               return <div className={`item ${done.has(it.id) ? "done" : ""}`} key={it.id}>
                 <input type="checkbox" checked={done.has(it.id)} onChange={e => mark([it.id], e.target.checked)} aria-label={`Done: ${it.title}`} />
-                <a className="t" href={toUrl(targetUrl)} target={user ? "_blank" : undefined} rel="noopener noreferrer" title="Open master notes at this topic in new tab">{it.title}</a>
-                {targetPage && <a className="btn sm primary" href={toUrl(targetUrl)} target={user ? "_blank" : undefined} rel="noopener noreferrer" title="Open master notes at this topic in new tab">{label}</a>}
-                {shortP && shortP !== masterP && <a className="btn sm" href={toUrl(shortRead(shortP, it.id))} target={user ? "_blank" : undefined} rel="noopener noreferrer" title="Open Quick Revision notes in new tab">Quick · p.{shortP}</a>}
+                <a className="t" href={toUrl(targetUrl)} target={user ? "_blank" : undefined} rel="noopener noreferrer" title="Open the notes at this topic in new tab">{it.title}</a>
+                {targetPage && <a className="btn sm primary" href={toUrl(targetUrl)} target={user ? "_blank" : undefined} rel="noopener noreferrer" title="Open the notes at this topic in new tab">{label}</a>}
                 {(nb.slug === A2Z || nb.slug === "10-dsa-basics-data-structures" || it.tufUrl || it.leetcodeUrl || it.gfgUrl) && (
                   <>
                     {it.tufUrl && <a className="btn sm" href={it.tufUrl} target="_blank" rel="noopener noreferrer" title="Open interactive practice problem on takeUforward">TUF Practice ↗</a>}

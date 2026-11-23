@@ -337,12 +337,17 @@ export default function Track() {
               const targetPage = deep ? (it.masterPage || sec.masterPage || 1) : (it.page || sec.page || 1);
               const targetUrl = deep ? masterRead(targetPage, it.id) : shortRead(targetPage, it.id);
               const label = `${deep ? "Deep Dive" : "Quick"} · p.${targetPage}`;
+              // matching page in the other edition (from notes/crossmap.py)
+              const otherPage = deep ? (it.page && hasQuick ? it.page : undefined) : (it.masterPage && masterDoc ? it.masterPage : undefined);
+              const otherUrl = otherPage ? (deep ? shortRead(otherPage, it.id) : masterRead(otherPage, it.id)) : "";
+              const otherLabel = otherPage ? `${deep ? "Quick" : "Deep Dive"} · p.${otherPage}` : "";
               if (deep && !masterDoc) return null;
 
               return <div className={`item ${done.has(it.id) ? "done" : ""}`} key={it.id}>
                 <input type="checkbox" checked={done.has(it.id)} onChange={e => mark([it.id], e.target.checked)} aria-label={`Done: ${it.title}`} />
                 <a className="t" href={toUrl(targetUrl)} target={user ? "_blank" : undefined} rel="noopener noreferrer" title="Open the notes at this topic in new tab">{it.title}</a>
                 {targetPage && <a className="btn sm primary" href={toUrl(targetUrl)} target={user ? "_blank" : undefined} rel="noopener noreferrer" title="Open the notes at this topic in new tab">{label}</a>}
+                {otherPage && <a className="btn sm" href={toUrl(otherUrl)} target={user ? "_blank" : undefined} rel="noopener noreferrer" title={deep ? "Open the matching Quick Revise page" : "Open the matching Deep-Dive page"}>{otherLabel}</a>}
                 {(nb.slug === A2Z || nb.slug === "10-dsa-basics-data-structures" || it.tufUrl || it.leetcodeUrl || it.gfgUrl) && (
                   <>
                     {it.tufUrl && <a className="btn sm" href={it.tufUrl} target="_blank" rel="noopener noreferrer" title="Open interactive practice problem on takeUforward">TUF Practice ↗</a>}

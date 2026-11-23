@@ -84,6 +84,15 @@ if (existsSync(longDir)) {
     sec.masterPage = sec.items[0]?.masterPage || 1;
   }
 }
+// Cross links: each item also points at the matching page in the other edition (built by notes/crossmap.py).
+const cmPath = join(here, "..", "..", "notes", "crossmap.json");
+if (existsSync(cmPath)) {
+  const cm = JSON.parse(readFileSync(cmPath, "utf8"));
+  for (const nb of Object.values(notebooks)) for (const s of nb.sections) for (const it of s.items) {
+    const p = cm[nb.slug]?.[it.id]; if (!p) continue;
+    if (it.deep || s.deep) it.page = p; else it.masterPage = p;
+  }
+}
 writeFileSync(out, JSON.stringify(notebooks));
 const count = Object.values(notebooks).reduce((n, nb) => n + nb.sections.reduce((m, s) => m + s.items.length, 0), 0);
 console.log(`topics.json: ${Object.keys(notebooks).length} notebooks, ${count} checklist items`);

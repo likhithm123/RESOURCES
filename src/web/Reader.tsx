@@ -28,10 +28,10 @@ type Meta = { token: string; pages: number; title: string; searchable: boolean; 
 
 const isDeepSlug = (slug: string) => slug.endsWith("-master") || slug.endsWith("-long");
 // Page of a checklist item inside this document: deep-dive items live in the -master PDF, the rest in the quick notes.
+// Works in both directions: items carry their own page plus the matching page in the other edition.
 function itemPage(slug: string, it: TItem, s: TSection): number | undefined {
   const deep = !!(it.deep || s.deep);
-  if (deep !== isDeepSlug(slug)) return undefined;
-  return deep ? (it.masterPage || s.masterPage) : (it.page || s.page);
+  return isDeepSlug(slug) ? (it.masterPage || (deep ? s.masterPage : undefined)) : (it.page || (deep ? undefined : s.page));
 }
 const notebookOf = (slug: string) => TOPICS[slug.replace(/-(master|long)$/, "")] || TOPICS[slug];
 
